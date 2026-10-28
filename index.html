@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>bttyScreener</title><link rel="icon" href="logo.jpg">
+<style>
+:root{--o:#ef8d12;--o2:#fff3e3;--t:#1c1c1c;--m:#7a7a7a;--b:#f0e3d2}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#fff;color:var(--t)}
+header{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:3px solid var(--o)}
+header img{width:44px;height:44px;border-radius:10px}header b{font-size:22px;color:var(--o)}
+header small{margin-left:auto;color:var(--m)}
+main{max-width:1000px;margin:0 auto;padding:16px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button,input{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--o);background:#fff;color:var(--o)}
+button.on{background:var(--o);color:#fff}input{color:var(--t);flex:1;min-width:160px}
+.w{overflow-x:auto}table{width:100%;border-collapse:collapse}
+th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--b);white-space:nowrap}
+th{color:var(--m);font-weight:600;font-size:13px}tr:hover td{background:var(--o2)}
+.tag{padding:2px 8px;border-radius:99px;background:var(--o2);color:var(--o);font-size:12px;font-weight:600}
+.bar2{display:inline-block;width:70px;height:6px;background:var(--b);border-radius:3px;vertical-align:middle;margin-right:6px}
+.bar2 i{display:block;height:100%;background:var(--o);border-radius:3px}
+</style></head><body>
+<header><img src="logo.jpg" alt=""><b>bttyScreener</b><small id="up"></small></header>
+<main><div class="bar" id="tabs"></div><div class="bar"><input id="q" placeholder="Search token..."></div>
+<div class="w"><table><thead><tr><th>#</th><th>Token</th><th>Type</th><th>Supply</th><th>Minted</th><th>Mints/Txs</th><th>Deployed</th></tr></thead><tbody id="r"></tbody></table></div></main>
+<script>
+const T={new:"New",hot:"Trending","BRC-20":"BRC-20",Rune:"Runes"};let D=[],tab="new";
+const esc=s=>String(s).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
+const ago=t=>{const h=(Date.now()/1e3-t)/3600;return h<1?"<1h ago":h<48?Math.floor(h)+"h ago":Math.floor(h/24)+"d ago"};
+function draw(){const q=document.getElementById("q").value.toLowerCase();
+let l=D.filter(t=>t.name.toLowerCase().includes(q));
+if(tab=="new")l.sort((a,b)=>b.deployed-a.deployed);else if(tab=="hot")l.sort((a,b)=>b.txs-a.txs);
+else l=l.filter(t=>t.type==tab).sort((a,b)=>b.deployed-a.deployed);
+document.getElementById("r").innerHTML=l.slice(0,100).map((t,i)=>`<tr><td>${i+1}</td><td><b>${esc(t.name)}</b></td><td><span class=tag>${t.type}</span></td><td>${t.supply.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td><span class=bar2><i style="width:${Math.min(t.mint_pct,100)}%"></i></span>${t.mint_pct}%</td><td>${Number(t.txs).toLocaleString()}</td><td>${ago(t.deployed)}</td></tr>`).join("")||"<tr><td colspan=7>No data yet. Run the Update tokens workflow.</td></tr>"}
+document.getElementById("tabs").innerHTML=Object.entries(T).map(([k,v])=>`<button data-k="${k}">${v}</button>`).join("");
+const mark=()=>document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k==tab));
+document.getElementById("tabs").onclick=e=>{if(e.target.dataset.k){tab=e.target.dataset.k;mark();draw()}};
+document.getElementById("q").oninput=draw;mark();
+fetch("data/tokens.json").then(r=>r.json()).then(j=>{D=j.tokens;if(j.updated)document.getElementById("up").textContent="Updated "+ago(j.updated);draw()});
+</script></body></html>
