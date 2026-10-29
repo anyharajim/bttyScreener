@@ -399,7 +399,9 @@ for x in d1:
     if not t:
         continue
     capu = num(x.get("capUSD"))
-    if t.lower() != "btty" and not (0 < capu < 1e10 and int(num(x.get("holders"))) > 0):
+    if t in EXTRA:
+        print("extra item", t, {k: x.get(k) for k in ("capUSD", "holders", "selfMint", "curPrice", "btcVolume", "totalMinted", "cap")})
+    elif t.lower() != "btty" and not (0 < capu < 1e10 and int(num(x.get("holders"))) > 0):
         continue
     cand.append(x)
 cand.sort(key=lambda x: (num((m30.get(str(x.get("tick"))) or {}).get("btcVolume")), num(x.get("capUSD"))), reverse=True)
@@ -415,7 +417,12 @@ for x in cand:
     if not isbt:
         b = get_bytes(ICON % urllib.parse.quote(t))
         if not b or len(b) < 200 or (PLACE and b == PLACE):
+            if t in EXTRA:
+                print("extra dropped: no photo", t, len(b) if b else None)
             continue  # no photo
+        if t in EXTRA:
+            final.append(x)
+            continue
         r = brc20_item(t)
         if r:
             add(r)
