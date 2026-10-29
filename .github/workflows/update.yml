@@ -9,6 +9,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python scripts/update.py
+        env:
+          HIRO_API_KEY: ${{ secrets.HIRO_API_KEY }}
       - run: |
           git config user.name "bttyScreener bot"
           git config user.email "bot@users.noreply.github.com"
