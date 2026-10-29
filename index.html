@@ -152,7 +152,9 @@ var market=null,marketP=null;
 function loadMarket(){return fetch("data/market.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){market=j}).catch(function(){market=null})}
 function mrow(t){var o={id:"u:"+t.tick,name:t.tick,symbol:"BRC-20",src:"u",image:t.tick.toLowerCase()==="btty"?"btty.png":t.image,market_cap_rank:t.rank,
   current_price:t.price_usd,total_volume:t.vol24_usd,market_cap:t.cap_usd,sparkline_in_7d:{price:t.spark||[]}};
-  o[C24]=t.ch24;o[C7]=t.ch7;return o}
+  o[C24]=t.ch24;o[C7]=t.ch7;
+  if(!t.price_usd&&!t.cap_usd&&!t.vol30_usd){o.current_price=null;o.total_volume=null;o.market_cap=null;o.sparkline_in_7d={price:[]};o[C24]=null;o[C7]=null}
+  return o}
 function btRow(){
   if(market&&market.tokens)for(var i=0;i<market.tokens.length;i++)if(market.tokens[i].tick.toLowerCase()==="btty")return mrow(market.tokens[i]);
   var b=(meta&&meta.btty)||{},o={};for(var k in BT)o[k]=BT[k];
