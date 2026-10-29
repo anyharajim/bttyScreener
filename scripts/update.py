@@ -62,8 +62,20 @@ def add(t):
 
 
 def norm(s):
-    s = str(s or "").lower().replace("(runes)", "")
+    s = re.sub(r"\((runes|bitcoin)\)", "", str(s or "").lower())
     return re.sub(r"[^a-z0-9]", "", s)
+
+
+# CoinGecko names do not always match the on-chain rune name; these ids are mapped by hand.
+RUNE_OVERRIDE = {
+    "dog-go-to-the-moon-rune": "doggotothemoon",
+    "billion-dollar-cat-runes": "billiondollarcat",
+    "magic-internet-money-runes": "magicinternetmoney",
+    "satoshi-nakamoto-rune": "satoshinakamoto",
+    "gizmo-imaginary-kitten-runes": "gizmoimaginarykitten",
+    "rune-pups": "pupsworldpeace",
+}
+B20_ALIAS = {"1000sats": "sats"}  # CoinGecko's 1000SATS is the on-chain 'sats' ticker
 
 
 def cg(category, pages=2):
@@ -106,8 +118,9 @@ time.sleep(8)
 cg_rn = cg("runes")
 if not cg_b20 and not cg_rn:
     print("CoinGecko unavailable; keeping previous photo/member lists")
+rn_over_img = {RUNE_OVERRIDE[c["id"]]: c.get("image") for c in cg_rn if c["id"] in RUNE_OVERRIDE and c.get("image")}
 b20_img = {str(c["symbol"]).lower(): c.get("image") for c in cg_b20 if c.get("image")}
-rn_img = {}
+rn_img = dict(rn_over_img)
 for c in cg_rn:
     for k in (norm(c.get("name")), norm(c.get("symbol"))):
         if k and c.get("image"):
@@ -175,7 +188,7 @@ print("BTTY:", btty)
 
 # 2) Mint status for top-100 market tickers, CoinGecko BRC-20 coins, newest deployments
 want = [k.split(":", 1)[1] for k in items if k.startswith("brc20:")]
-want += [str(c["symbol"]) for c in cg_b20]
+want += [B20_ALIAS.get(str(c["symbol"]).lower(), str(c["symbol"])) for c in cg_b20]
 d = call("/v1/indexer/brc20/list?start=0&limit=1")
 total = int(num((d or {}).get("total")))
 print("brc20 total tickers:", total)
@@ -204,7 +217,7 @@ def pct_of(sym):
 
 
 for c in cg_b20:  # minted flag for each CoinGecko BRC-20 coin
-    p = pct_of(str(c["symbol"]).lower())
+    p = pct_of(B20_ALIAS.get(str(c["symbol"]).lower(), str(c["symbol"]).lower()))
     minted_b20[c["id"]] = (p is not None and p >= 100)
 
 # 3) Runes -----------------------------------------------------------------
@@ -228,7 +241,8 @@ if runes_all:
     print("rune sample keys:", sorted(runes_all[0].keys()))
 minted_rn = {}
 for c in cg_rn:
-    r = by_norm.get(norm(c.get("name"))) or by_norm.get(norm(c.get("symbol")))
+    r = (by_norm.get(RUNE_OVERRIDE.get(c["id"], "")) or by_norm.get(norm(c.get("name")))
+         or by_norm.get(norm(c.get("symbol"))))
     ok = bool(r and rune_done(r))
     minted_rn[c["id"]] = ok
     print("rune", c["id"], "|", c.get("name"), "|", c.get("symbol"), "| matched:", bool(r),
