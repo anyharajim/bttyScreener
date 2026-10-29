@@ -92,6 +92,8 @@ footer{text-align:center;color:var(--m);font-size:12px;padding:20px 10px 0}
   .more>div{margin-right:28px}
   .row{margin-bottom:10px;border-radius:20px}
 }
+.ban{position:sticky;top:0;z-index:50;background:#000;color:#ef8d12;text-align:center;font-weight:700;font-size:14px;padding:10px 14px;line-height:1.3}
+@media(max-width:720px){.ban{font-size:12.5px;padding:9px 10px}}
 </style></head><body>
 <div id="splash"><img src="logo.jpg" alt=""><b>bttyScreener</b></div>
 <script>
@@ -99,6 +101,7 @@ window.onerror=function(){var n=document.getElementById("note"),s=document.getEl
   if(n){n.textContent="Something went wrong loading this page. Try refreshing, or update your browser.";n.style.display="block"}
   if(s)s.style.display="none"};
 </script>
+<div class="ban">50% of traffic goes to the burning of $BTTY coins</div>
 <div class="shell">
   <div class="top">
     <div class="brand"><img src="logo.jpg" alt=""><b>bttyScreener</b></div>
@@ -128,13 +131,29 @@ window.onerror=function(){var n=document.getElementById("note"),s=document.getEl
   </div>
   <div id="r"></div>
   <div class="pg"><button class="pill" id="prev">Previous</button><span id="pn"></span><button class="pill" id="next">Next</button></div>
-  <footer>Prices from CoinGecko. New tab data from UniSat, updated twice daily. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
+  <footer>Prices from CoinGecko. New tab data from UniSat, updated twice daily. Prices can lag. Not financial advice. Only tokens with a photo are listed, and BRC-20s and Runes only appear once minting is complete (except $BTTY).</footer>
 </div>
 <script>
 var API="https://api.coingecko.com/api/v3";
 function $(id){return document.getElementById(id)}
 var TABS={all:"Coins","new":"New","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
-var newRows=[],nflt="all",newUpdated=0;
+var newRows=[],nflt="all",newUpdated=0,meta=null,metaP=null;
+var BT={id:"btty",name:"BTTY",symbol:"BRC-20",image:"logo.jpg",market_cap_rank:null};
+function loadMeta(){return fetch("data/coins.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){meta=j}).catch(function(){meta=null})}
+function okCoin(c){
+  if(c.id==="btty"||String(c.symbol).toLowerCase()==="btty")return false;
+  if(!c.image||/missing/i.test(c.image))return false;
+  var m=meta&&meta.members&&meta.members[c.id];
+  if(tab==="brc-20"||tab==="runes"){if(!meta)return true;return !!(m&&m.minted===true)}
+  return !(m&&m.minted!==true);
+}
+function btRow(){
+  var b=(meta&&meta.btty)||{},o={};for(var k in BT)o[k]=BT[k];
+  o.current_price=b.price_usd||null;o[C24]=b.change==null?null:b.change;o.market_cap=b.cap_usd||null;o.total_volume=b.volume_usd||null;return o}
+function showBt(){
+  if(tab==="trending"||tab==="runes"||tab==="new")return false;
+  if(search){var s=search.toLowerCase();return s.length>=2&&"btty".indexOf(s)>-1}
+  return page===1}
 var tab=(location.hash.slice(1) in TABS)?location.hash.slice(1):"all",page=1,rows=[],sort={k:null,d:-1},search="",open={};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return"&#"+c.charCodeAt(0)+";"})}
 function note(t){var n=$("note");n.textContent=t;n.style.display=t?"block":"none"}
@@ -178,7 +197,7 @@ function ago(s){if(!s)return"-";var h=(Date.now()/1e3-s)/3600;if(h<1)return"<1h 
 function newRow(t){
   var ini=esc(String(t.name||"?").charAt(0).toUpperCase());
   var mint=t.mint_pct==null?"-":t.mint_pct+'%<span class="bar"><i style="width:'+Math.min(t.mint_pct,100)+'%"></i></span>';
-  return'<div class="row nr"><span class="c"><span class="ini">'+ini+'</span><span class="nm">'+esc(t.name||"?")+'<small>'+esc(t.type)+'</small></span></span>'+
+  return'<div class="row nr"><span class="c"><img src="'+esc(t.image)+'" alt="" loading="lazy"><span class="nm">'+esc(t.name||"?")+'<small>'+esc(t.type)+'</small></span></span>'+
   '<div class="st"><label>Deployed</label>'+ago(t.deployed)+'</div>'+
   '<div class="st"><label>Minted</label>'+mint+'</div>'+
   '<div class="st"><label>Holders</label>'+(t.holders?Number(t.holders).toLocaleString():"-")+'</div>'+
@@ -191,21 +210,22 @@ function drawNew(){
     .sort(function(a,b){return(b.deployed||0)-(a.deployed||0)}).slice(0,100);
   $("nf").innerHTML=[["all","All"],["BRC-20","BRC-20"],["Rune","Runes"]].map(function(p){return'<button class="tab'+(nflt===p[0]?" on":"")+'" data-k="'+p[0]+'">'+p[1]+'</button>'}).join("")+
     (newUpdated?' <span style="color:var(--m);font-size:12px;margin-left:6px">Updated '+ago(newUpdated)+'</span>':"");
-  $("r").innerHTML=l.map(newRow).join("")||'<div class="empty">'+(newRows.length?"No results.":"New coin data is not ready yet. It fills in after the next scheduled update.")+'</div>';
+  $("r").innerHTML=l.map(newRow).join("")||'<div class="empty">'+(newRows.length?"No results.":"No new tokens right now that have a photo and have finished minting. Checked twice daily.")+'</div>';
   $("pn").textContent="";$("prev").style.display=$("next").style.display="none";
 }
 async function loadNew(){
   try{var r=await fetch("data/tokens.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"});if(!r.ok)throw new Error(r.status);
-    var j=await r.json();newRows=(j.tokens||[]).filter(function(t){return t.deployed>0});newUpdated=j.updated||0;note("")}
+    var j=await r.json();var lim=Date.now()/1e3-30*86400;newRows=(j.tokens||[]).filter(function(t){return t.deployed>lim&&t.image&&t.mint_pct>=100});newUpdated=j.updated||0;note("")}
   catch(e){newRows=[];note("Could not load new coins right now. Try refreshing.")}
   drawNew();
 }
 function draw(){
   if(tab==="new"){drawNew();return}
   layout();
-  var l=rows.slice();
+  var l=rows.filter(okCoin);
   if(sort.k)l.sort(function(a,b){var x=a[sort.k],y=b[sort.k];if(x==null)return 1;if(y==null)return-1;
     return(typeof x==="string"?x.localeCompare(y):x-y)*sort.d});
+  if(showBt())l.unshift(btRow());
   $("r").innerHTML=l.map(rowHtml).join("")||'<div class="empty">No results.</div>';
   var hs=document.querySelectorAll("#head span[data-k]");
   for(var i=0;i<hs.length;i++){hs[i].className=hs[i].getAttribute("data-k")===sort.k?(sort.d===1?"asc":"desc"):""}
@@ -217,6 +237,7 @@ function draw(){
 var MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
 async function load(){
   $("r").innerHTML='<div class="empty">Loading...</div>';
+  await (metaP||(metaP=loadMeta()));
   if(tab==="new"){await loadNew();return}
   try{
     if(search){
