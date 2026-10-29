@@ -194,12 +194,18 @@ for t in want:
     r = brc20_item(t)
     if r:
         add(r)
+def pct_of(sym):
+    best = None
+    for src in (items, prev):
+        for k, v in src.items():
+            if k.lower() == "brc20:" + sym and v.get("mint_pct") is not None:
+                best = max(best or 0, v["mint_pct"])
+    return best
+
+
 for c in cg_b20:  # minted flag for each CoinGecko BRC-20 coin
-    sym = str(c["symbol"]).lower()
-    rec = items.get("brc20:" + str(c["symbol"]).upper()) or items.get("brc20:" + sym)
-    rec = rec or next((v for k, v in {**prev, **items}.items() if k.lower() == "brc20:" + sym), None)
-    pct = (rec or {}).get("mint_pct")
-    minted_b20[c["id"]] = (pct is not None and pct >= 100)
+    p = pct_of(str(c["symbol"]).lower())
+    minted_b20[c["id"]] = (p is not None and p >= 100)
 
 # 3) Runes -----------------------------------------------------------------
 runes_all = []
