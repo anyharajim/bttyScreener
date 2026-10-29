@@ -6,7 +6,7 @@ OUT = os.path.join(os.path.dirname(__file__), "..", "data", "tokens.json")
 def get(path):
     for i in range(3):
         try:
-            req = urllib.request.Request(H + path, headers={"Accept": "application/json", "User-Agent": "bttyScreener"})
+            req = urllib.request.Request(H + path, headers={"Accept": "application/json", "User-Agent": "bttyScreener", "x-api-key": os.environ.get("HIRO_API_KEY", "")})
             return json.load(urllib.request.urlopen(req, timeout=30))
         except Exception as e:
             print("retry", path, e); time.sleep(3 * (i + 1))
