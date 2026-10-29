@@ -374,8 +374,33 @@ def market_extra(tt):
     return out
 
 
+PROG_PATHS = ["/v3/market/brc20-prog/auction/brc20_prog_types_many",
+              "/v3/market/brc20-prog/auction/brc20_prog_types",
+              "/v3/market/brc20_prog/auction/brc20_prog_types_many",
+              "/v3/market/brc20-prog/auction/types_many"]
+
+
+def prog_list(tt):
+    for path in PROG_PATHS:
+        for body in ({"timeType": tt, "start": 0, "limit": 100}, {"timeType": tt, "ticks": EXTRA, "start": 0, "limit": 100}):
+            d = call(path, body)
+            lst = d.get("list") if isinstance(d, dict) else (d if isinstance(d, list) else None)
+            print("prog probe", tt, path.rsplit("/", 1)[1], "->", None if d is None else (len(lst) if lst is not None else "nolist"), str(d)[:350] if tt == "day1" else "")
+            if lst:
+                return lst
+            time.sleep(0.3)
+    return []
+
+
 def with_extra(lst, tt):
     have = {str(z.get("tick")) for z in lst}
+    pl = prog_list(tt)
+    for z in pl:
+        z["_prog"] = True
+        k = str(z.get("tick"))
+        lst[:] = [y for y in lst if str(y.get("tick")) != k]
+        lst.append(z)
+        have.add(k)
     for z in market_extra(tt):
         if str(z.get("tick")) not in have:
             lst.append(z)
@@ -405,7 +430,7 @@ for x in d1:
         continue
     cand.append(x)
 cand.sort(key=lambda x: (num((m30.get(str(x.get("tick"))) or {}).get("btcVolume")), num(x.get("capUSD"))), reverse=True)
-cand = cand[:250]
+cand = [x for x in cand if str(x.get("tick")) in EXTRA] + [x for x in cand if str(x.get("tick")) not in EXTRA][:250]
 print("market candidates", len(cand))
 
 PLACE = get_bytes(ICON % "zzzz_no_such_tick_zzzz")
@@ -433,6 +458,7 @@ for x in cand:
     final.append(x)
     if len(final) >= 100 and not any(str(y["tick"]).lower() == "btty" for y in cand[len(final):]):
         pass
+final.sort(key=lambda x: -num((m30.get(str(x["tick"])) or {}).get("btcVolume")))
 print("market final", len(final))
 
 mt = []
