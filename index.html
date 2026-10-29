@@ -3,37 +3,110 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>bttyScreener</title><link rel="icon" href="logo.jpg">
 <style>
-:root{--o:#ef8d12;--o2:#fff3e3;--t:#1c1c1c;--m:#7a7a7a;--b:#f0e3d2}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#fff;color:var(--t)}
-header{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:3px solid var(--o)}
-header img{width:44px;height:44px;border-radius:10px}header b{font-size:22px;color:var(--o)}
-header small{margin-left:auto;color:var(--m)}
-main{max-width:1000px;margin:0 auto;padding:16px}
-.bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button,input{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--o);background:#fff;color:var(--o)}
-button.on{background:var(--o);color:#fff}input{color:var(--t);flex:1;min-width:160px}
+:root{--o:#ef8d12;--o2:#fff3e3;--t:#1c1c1c;--m:#6b6b6b;--b:#f0e3d2;--g:#16a34a;--r:#dc2626}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#fff;color:var(--t)}
+header{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:3px solid var(--o);flex-wrap:wrap;position:sticky;top:0;background:#fff;z-index:5}
+header img{width:42px;height:42px;border-radius:10px}header b{font-size:22px;color:var(--o)}
+#q{margin-left:auto;font:inherit;padding:8px 14px;border:1px solid var(--o);border-radius:8px;min-width:200px;color:var(--t)}
+main{max-width:1200px;margin:0 auto;padding:14px}
+#stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--m);font-size:13px;margin-bottom:12px}#stats b{color:var(--t)}
+#tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--o);background:#fff;color:var(--o);cursor:pointer}
+button.on{background:var(--o);color:#fff}button:disabled{opacity:.4;cursor:default}
+#note{background:var(--o2);border:1px solid var(--o);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px;display:none}
 .w{overflow-x:auto}table{width:100%;border-collapse:collapse}
-th,td{padding:10px 8px;text-align:left;border-bottom:1px solid var(--b);white-space:nowrap}
-th{color:var(--m);font-weight:600;font-size:13px}tr:hover td{background:var(--o2)}
-.tag{padding:2px 8px;border-radius:99px;background:var(--o2);color:var(--o);font-size:12px;font-weight:600}
-.bar2{display:inline-block;width:70px;height:6px;background:var(--b);border-radius:3px;vertical-align:middle;margin-right:6px}
-.bar2 i{display:block;height:100%;background:var(--o);border-radius:3px}
+th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--b);white-space:nowrap;font-size:14px}
+th{color:var(--m);font-weight:600;font-size:12px;cursor:pointer;user-select:none}
+th:nth-child(1),td:nth-child(1){text-align:left;color:var(--m)}th:nth-child(2),td:nth-child(2){text-align:left}
+tbody tr:hover td{background:var(--o2)}
+.c{display:flex;align-items:center;gap:8px;font-weight:600}.c img{width:24px;height:24px;border-radius:50%}.c small{color:var(--m);font-weight:400;text-transform:uppercase}
+.up{color:var(--g)}.dn{color:var(--r)}
+#pg{display:flex;gap:10px;align-items:center;justify-content:center;margin:16px 0;color:var(--m)}
+footer{text-align:center;color:var(--m);font-size:12px;padding:20px}
 </style></head><body>
-<header><img src="logo.jpg" alt=""><b>bttyScreener</b><small id="up"></small></header>
-<main><div class="bar" id="tabs"></div><div class="bar"><input id="q" placeholder="Search token..."></div>
-<div class="w"><table><thead><tr><th>#</th><th>Token</th><th>Type</th><th>Supply</th><th>Minted</th><th>Mints/Txs</th><th>Deployed</th></tr></thead><tbody id="r"></tbody></table></div></main>
+<header><img src="logo.jpg" alt=""><b>bttyScreener</b><input id="q" placeholder="Search coins..." autocomplete="off"></header>
+<main>
+<div id="stats"></div>
+<div id="tabs"></div>
+<div id="note"></div>
+<div class="w"><table><thead><tr>
+<th data-k="market_cap_rank">#</th><th data-k="name">Coin</th><th data-k="current_price">Price</th>
+<th data-k="price_change_percentage_1h_in_currency">1h</th><th data-k="price_change_percentage_24h_in_currency">24h</th><th data-k="price_change_percentage_7d_in_currency">7d</th>
+<th data-k="total_volume">24h Volume</th><th data-k="market_cap">Market Cap</th><th>Last 7 Days</th></tr></thead>
+<tbody id="r"></tbody></table></div>
+<div id="pg"><button id="prev">Previous</button><span id="pn"></span><button id="next">Next</button></div>
+</main>
+<footer>Data from CoinGecko. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
 <script>
-const T={new:"New",hot:"Trending","BRC-20":"BRC-20",Rune:"Runes"};let D=[],tab="new";
-const esc=s=>String(s).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
-const ago=t=>{const h=(Date.now()/1e3-t)/3600;return h<1?"<1h ago":h<48?Math.floor(h)+"h ago":Math.floor(h/24)+"d ago"};
-function draw(){const q=document.getElementById("q").value.toLowerCase();
-let l=D.filter(t=>t.name.toLowerCase().includes(q));
-if(tab=="new")l.sort((a,b)=>b.deployed-a.deployed);else if(tab=="hot")l.sort((a,b)=>b.txs-a.txs);
-else l=l.filter(t=>t.type==tab).sort((a,b)=>b.deployed-a.deployed);
-document.getElementById("r").innerHTML=l.slice(0,100).map((t,i)=>`<tr><td>${i+1}</td><td><b>${esc(t.name)}</b></td><td><span class=tag>${t.type}</span></td><td>${t.supply.toLocaleString(undefined,{maximumFractionDigits:0})}</td><td><span class=bar2><i style="width:${Math.min(t.mint_pct,100)}%"></i></span>${t.mint_pct}%</td><td>${Number(t.txs).toLocaleString()}</td><td>${ago(t.deployed)}</td></tr>`).join("")||"<tr><td colspan=7>No data yet. Run the Update tokens workflow.</td></tr>"}
-document.getElementById("tabs").innerHTML=Object.entries(T).map(([k,v])=>`<button data-k="${k}">${v}</button>`).join("");
-const mark=()=>document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k==tab));
-document.getElementById("tabs").onclick=e=>{if(e.target.dataset.k){tab=e.target.dataset.k;mark();draw()}};
-document.getElementById("q").oninput=draw;mark();
-fetch("data/tokens.json").then(r=>r.json()).then(j=>{D=j.tokens;if(j.updated)document.getElementById("up").textContent="Updated "+ago(j.updated);draw()});
+const API="https://api.coingecko.com/api/v3",$=id=>document.getElementById(id);
+const TABS={all:"Coins","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
+let tab=(location.hash.slice(1) in TABS)?location.hash.slice(1):"all",page=1,rows=[],sort={k:null,d:-1},search="";
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
+async function get(path){
+  const key="cg:"+path,now=Date.now();
+  try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c&&now-c.t<60000)return c.d}catch(e){}
+  try{
+    const r=await fetch(API+path);
+    if(!r.ok)throw new Error(r.status);
+    const d=await r.json();
+    try{localStorage.setItem(key,JSON.stringify({t:now,d}))}catch(e){}
+    note("");return d;
+  }catch(e){
+    try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c){note("CoinGecko is rate limiting requests, so this may be a minute or two old.");return c.d}}catch(x){}
+    note(e.message==="429"?"CoinGecko rate limit reached. Wait a minute and refresh.":"Could not load data right now.");
+    throw e;
+  }
+}
+function note(t){const n=$("note");n.textContent=t;n.style.display=t?"block":"none"}
+const money=n=>n==null?"-":"$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+function price(n){if(n==null)return"-";n=Number(n);if(n>=1)return"$"+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  return"$"+(n>=0.01?n.toFixed(4):n.toPrecision(4))}
+const pct=n=>n==null?"-":`<span class="${n>=0?"up":"dn"}">${n>=0?"▲":"▼"} ${Math.abs(n).toFixed(1)}%</span>`;
+function spark(a){if(!a||a.length<2)return"";const p=a.filter((_,i)=>i%4===0),mn=Math.min(...p),mx=Math.max(...p),h=mx-mn||1;
+  const pts=p.map((v,i)=>(i/(p.length-1)*120).toFixed(1)+","+(30-(v-mn)/h*28-1).toFixed(1)).join(" ");
+  const up=p[p.length-1]>=p[0];return`<svg width="120" height="30" viewBox="0 0 120 30"><polyline fill="none" stroke="${up?"#16a34a":"#dc2626"}" stroke-width="1.6" points="${pts}"/></svg>`}
+function draw(){
+  let l=rows.slice();
+  if(sort.k)l.sort((a,b)=>{const x=a[sort.k],y=b[sort.k];if(x==null)return 1;if(y==null)return-1;
+    return(typeof x==="string"?x.localeCompare(y):x-y)*sort.d});
+  $("r").innerHTML=l.map(c=>`<tr><td>${c.market_cap_rank??"-"}</td>
+  <td><div class="c"><img src="${esc(c.image)}" alt="" loading="lazy">${esc(c.name)} <small>${esc(c.symbol)}</small></div></td>
+  <td>${price(c.current_price)}</td><td>${pct(c.price_change_percentage_1h_in_currency)}</td><td>${pct(c.price_change_percentage_24h_in_currency)}</td><td>${pct(c.price_change_percentage_7d_in_currency)}</td>
+  <td>${money(c.total_volume)}</td><td>${money(c.market_cap)}</td><td>${spark(c.sparkline_in_7d&&c.sparkline_in_7d.price)}</td></tr>`).join("")
+  ||'<tr><td colspan="9" style="text-align:center;color:var(--m)">No results.</td></tr>';
+  const nopg=search||tab==="trending";
+  $("pn").textContent=nopg?"":"Page "+page;
+  $("prev").style.display=$("next").style.display=nopg?"none":"";
+  $("prev").disabled=page<=1;
+}
+const MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
+async function load(){
+  $("r").innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--m)">Loading...</td></tr>';
+  try{
+    if(search){
+      const s=await get("/search?query="+encodeURIComponent(search));
+      const ids=s.coins.slice(0,30).map(c=>c.id).join(",");
+      rows=ids?await get("/coins/markets?ids="+ids+"&order=market_cap_desc"+MK):[];
+    }else if(tab==="trending"){
+      const t=await get("/search/trending");
+      const ids=t.coins.map(c=>c.item.id).join(",");
+      rows=ids?await get("/coins/markets?ids="+ids+"&order=market_cap_desc"+MK):[];
+    }else{
+      const cat=tab==="all"?"":"&category="+tab;
+      rows=await get("/coins/markets?order=market_cap_desc&per_page=100&page="+page+cat+MK);
+      $("next").disabled=rows.length<100;
+    }
+  }catch(e){rows=[]}
+  draw();
+}
+$("tabs").innerHTML=Object.entries(TABS).map(([k,v])=>`<button data-k="${k}">${v}</button>`).join("");
+function mark(){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===tab))}
+$("tabs").onclick=e=>{const k=e.target.dataset.k;if(k){tab=k;page=1;search="";$("q").value="";sort={k:null,d:-1};location.hash=k;mark();load()}};
+document.querySelector("thead").onclick=e=>{const k=e.target.dataset.k;if(!k)return;sort={k,d:sort.k===k?-sort.d:(k==="name"||k==="market_cap_rank"?1:-1)};draw()};
+$("prev").onclick=()=>{page--;load();scrollTo(0,0)};$("next").onclick=()=>{page++;load();scrollTo(0,0)};
+let t;$("q").oninput=e=>{clearTimeout(t);t=setTimeout(()=>{search=e.target.value.trim();page=1;load()},500)};
+async function stats(){try{const g=(await get("/global")).data;
+  $("stats").innerHTML=`<span>Coins: <b>${g.active_cryptocurrencies.toLocaleString()}</b></span><span>Market Cap: <b>${money(g.total_market_cap.usd)}</b></span><span>24h Volume: <b>${money(g.total_volume.usd)}</b></span><span>BTC Dominance: <b>${g.market_cap_percentage.btc.toFixed(1)}%</b></span>`}catch(e){}}
+mark();stats();load();
+setInterval(()=>{if(!document.hidden&&!search)load()},90000);
 </script></body></html>
