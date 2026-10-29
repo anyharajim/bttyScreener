@@ -350,14 +350,28 @@ EXTRA = ["shhhhh", "WORLDX", "BFARMS", "GAMEFI", "zkhash", "potato", "XTesla", "
 
 
 def market_extra(tt):
-    for path in ("/v3/market/brc20/auction/brc20_types_specified", "/v3/market/brc20/auction/brc20_types"):
-        d = call(path, {"timeType": tt, "start": 0, "limit": 100, "ticks": EXTRA})
-        lst = (d or {}).get("list") or []
-        print("extra", tt, path.rsplit("/", 1)[1], "->", len(lst), [str(z.get("tick")) for z in lst][:14])
-        if lst:
-            return lst
-        time.sleep(0.3)
-    return []
+    out = []
+    for tk in EXTRA:
+        got = None
+        for body in ({"timeType": tt, "tick": tk}, {"timeType": tt, "tick": tk, "start": 0, "limit": 10}):
+            d = call("/v3/market/brc20/auction/brc20_types_specified", body)
+            if d is None:
+                continue
+            if isinstance(d, dict) and isinstance(d.get("list"), list):
+                got = d["list"][0] if d["list"] else None
+            elif isinstance(d, dict) and d.get("tick"):
+                got = d
+            elif isinstance(d, list) and d:
+                got = d[0]
+            if got is None and tk == EXTRA[0] and tt == "day1":
+                print("extra raw", str(d)[:300])
+            if got:
+                break
+        print("extra", tt, tk, "->", bool(got))
+        if got:
+            out.append(got)
+        time.sleep(0.25)
+    return out
 
 
 def with_extra(lst, tt):
