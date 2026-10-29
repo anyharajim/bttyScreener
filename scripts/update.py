@@ -267,6 +267,122 @@ for sort, start in queries:
              "mint_pct": round(min(mints / cap_ * 100, 100), 2) if cap_ else 100.0,
              "txs": int(num(r.get("transactions")))})
 
+# 4) BRC-20 market table (price, 24h/7d change, volume, cap, photo, 7-day chart) ---------
+MAX_PAGES = 10
+ICON = "https://static.unisat.space/icon/brc20/%s"
+MARKET = os.path.join(DATA, "market.json")
+
+
+def market(tt):
+    out, bp = [], 0.0
+    for p in range(MAX_PAGES):
+        d = call("/v3/market/brc20/auction/brc20_types", {"timeType": tt, "start": p * 100, "limit": 100})
+        if not d:
+            break
+        bp = num(d.get("BTCPrice")) or bp
+        lst = d.get("list") or []
+        if p == 0:
+            print("market", tt, "keys", sorted(d.keys()), "total", d.get("total"))
+            print("market", tt, "item keys", sorted(lst[0].keys()) if lst else None)
+        out += lst
+        if len(lst) < 100:
+            break
+        time.sleep(0.3)
+    print("market", tt, "items", len(out), "btc", bp)
+    return out, bp
+
+
+def get_bytes(url):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "bttyScreener"})
+        return urllib.request.urlopen(req, timeout=20).read()
+    except Exception as e:
+        print("icon fetch fail", url, e)
+        return None
+
+
+def kline(tick, btcp):
+    end = int(time.time() * 1000)
+    d = call("/v3/market/brc20/auction/brc20_kline",
+             {"tick": tick, "timeStart": end - 7 * 86400 * 1000, "timeEnd": end, "timeStep": 6 * 3600 * 1000})
+    lst = d if isinstance(d, list) else ((d or {}).get("list") or (d or {}).get("detail") or [])
+    pts = []
+    for it in lst:
+        if isinstance(it, dict):
+            v = None
+            for k in ("close", "price", "avgPrice", "curPrice", "open"):
+                if it.get(k) not in (None, "", 0):
+                    v = num(it.get(k))
+                    break
+        else:
+            v = num(it)
+        if v:
+            pts.append(v)
+    return pts, (json.dumps(d)[:300] if d is not None else None)
+
+
+d1, btc1 = market("day1")
+time.sleep(0.3)
+d7, btc7 = market("day7")
+btcp = btc1 or btc7 or btc
+m7 = {str(x.get("tick")): x for x in d7}
+cand = []
+for x in d1:
+    t = str(x.get("tick") or "")
+    if not t:
+        continue
+    capu = num(x.get("capUSD"))
+    if t.lower() != "btty" and not (0 < capu < 1e10 and int(num(x.get("holders"))) > 0):
+        continue
+    cand.append(x)
+cand.sort(key=lambda x: num(x.get("capUSD")), reverse=True)
+cand = cand[:250]
+print("market candidates", len(cand))
+
+PLACE = get_bytes(ICON % "zzzz_no_such_tick_zzzz")
+print("placeholder icon bytes", len(PLACE) if PLACE else None)
+final = []
+for x in cand:
+    t = str(x["tick"])
+    isbt = t.lower() == "btty"
+    if not isbt:
+        b = get_bytes(ICON % urllib.parse.quote(t))
+        if not b or len(b) < 200 or (PLACE and b == PLACE):
+            continue  # no photo
+        r = brc20_item(t)
+        if r:
+            add(r)
+        p = pct_of(t.lower())
+        done = (p is not None and p >= 100) or bool(x.get("selfMint"))
+        if not done:
+            continue
+    final.append(x)
+    if len(final) >= 100 and not any(str(y["tick"]).lower() == "btty" for y in cand[len(final):]):
+        pass
+print("market final", len(final))
+
+mt = []
+for i, x in enumerate(final):
+    t = str(x["tick"])
+    y = m7.get(t) or {}
+    pts, raw = ([], None)
+    if i < 100 or t.lower() == "btty":
+        time.sleep(0.25)
+        pts, raw = kline(t, btcp)
+        if i < 2 or t.lower() == "btty":
+            print("kline", t, len(pts), raw)
+    mt.append({"tick": t, "image": ICON % urllib.parse.quote(t),
+               "price_usd": num(x.get("curPrice")) * btcp / 1e8 if btcp > 1000 else None,
+               "ch24": num(x.get("changePercent")), "ch7": num(y.get("changePercent")) if y else None,
+               "vol24_usd": num(x.get("btcVolume")) * btcp, "vol7_usd": num(y.get("btcVolume")) * btcp if y else None,
+               "cap_usd": num(x.get("capUSD")), "holders": int(num(x.get("holders"))), "spark": pts})
+mt = mt[:100] if not any(z["tick"].lower() == "btty" for z in mt[100:]) else mt[:100] + [z for z in mt[100:] if z["tick"].lower() == "btty"]
+for i, z in enumerate(mt):
+    z["rank"] = i + 1
+if mt:
+    json.dump({"updated": int(time.time()), "btc": btcp, "tokens": mt}, open(MARKET, "w"), separators=(",", ":"))
+    print("market saved", len(mt), "tokens; first:", [z["tick"] for z in mt[:8]])
+
 if not items:
     sys.exit("No data fetched from UniSat (see messages above). Data file left unchanged.")
 
