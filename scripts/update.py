@@ -345,11 +345,37 @@ def kline(tick, btcp):
     return pts, (json.dumps(d)[:300] if d is not None else None)
 
 
+# brc2.0 self-issuance tokens are not returned by the plain list, so ask for them by name.
+EXTRA = ["shhhhh", "WORLDX", "BFARMS", "GAMEFI", "zkhash", "potato", "XTesla", "GAMBLE", "GOATED", "miners", "MONKEY", "SHR0UD"]
+
+
+def market_extra(tt):
+    for path in ("/v3/market/brc20/auction/brc20_types_specified", "/v3/market/brc20/auction/brc20_types"):
+        d = call(path, {"timeType": tt, "start": 0, "limit": 100, "ticks": EXTRA})
+        lst = (d or {}).get("list") or []
+        print("extra", tt, path.rsplit("/", 1)[1], "->", len(lst), [str(z.get("tick")) for z in lst][:14])
+        if lst:
+            return lst
+        time.sleep(0.3)
+    return []
+
+
+def with_extra(lst, tt):
+    have = {str(z.get("tick")) for z in lst}
+    for z in market_extra(tt):
+        if str(z.get("tick")) not in have:
+            lst.append(z)
+    return lst
+
+
 d1, btc1 = market_all("day1")
+d1 = with_extra(d1, "day1")
 time.sleep(0.3)
 d7, btc7 = market_all("day7")
+d7 = with_extra(d7, "day7")
 time.sleep(0.3)
 d30, btc30 = market_all("day30")
+d30 = with_extra(d30, "day30")
 btcp = btc1 or btc7 or btc30 or btc
 m7 = {str(x.get("tick")): x for x in d7}
 m30 = {str(x.get("tick")): x for x in d30}
