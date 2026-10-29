@@ -195,7 +195,7 @@ function drawNew(){
   $("pn").textContent="";$("prev").style.display=$("next").style.display="none";
 }
 async function loadNew(){
-  try{var r=await fetch("data/tokens.json?t="+Math.floor(Date.now()/600000));if(!r.ok)throw new Error(r.status);
+  try{var r=await fetch("data/tokens.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"});if(!r.ok)throw new Error(r.status);
     var j=await r.json();newRows=(j.tokens||[]).filter(function(t){return t.deployed>0});newUpdated=j.updated||0;note("")}
   catch(e){newRows=[];note("Could not load new coins right now. Try refreshing.")}
   drawNew();
