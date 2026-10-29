@@ -14,5 +14,5 @@ jobs:
       - run: |
           git config user.name "bttyScreener bot"
           git config user.email "bot@users.noreply.github.com"
-          git add data/tokens.json
+          git add data/
           git diff --staged --quiet || (git commit -m "data update" && git push)
