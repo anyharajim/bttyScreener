@@ -56,6 +56,16 @@ body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:va
 .pill:disabled{opacity:.4;cursor:default}
 .empty{text-align:center;color:var(--m);padding:40px 0}
 footer{text-align:center;color:var(--m);font-size:12px;padding:20px 10px 0}
+#nf{display:none;margin:4px 0 12px}
+#nf .tab{padding:7px 16px;font-size:13px}
+.nr{display:flex;align-items:center;flex-wrap:wrap;padding:16px 22px;cursor:default}
+.nr .c{flex:2 1 220px;margin-bottom:4px}
+.nr .st{flex:1 1 110px;margin:4px 0}
+.nr label{display:block;color:var(--m);font-size:12px;margin-bottom:3px}
+.ini{width:36px;height:36px;border-radius:50%;background:var(--o);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;margin-right:12px;flex:none;font-size:15px}
+.tag{display:inline-block;background:var(--o2);color:var(--o);border-radius:999px;font-size:11px;font-weight:600;padding:2px 9px;margin-left:8px;vertical-align:middle}
+.bar{display:block;width:90px;height:6px;border-radius:3px;background:#f3e2cb;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--o)}
 #splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s;animation:autohide .5s 8s forwards}
 #splash.hide{opacity:0;pointer-events:none}
 #splash img{width:150px;height:150px;border-radius:30px;margin-bottom:20px;animation:pulse 1.6s ease-in-out infinite}
@@ -101,6 +111,7 @@ window.onerror=function(){var n=document.getElementById("note"),s=document.getEl
   </div>
   <div class="stats" id="stats"></div>
   <div id="note"></div>
+  <div id="nf"></div>
   <select class="mobsort" id="sortsel">
     <option value="">Sort: Default</option>
     <option value="current_price|-1">Price: high to low</option>
@@ -117,12 +128,13 @@ window.onerror=function(){var n=document.getElementById("note"),s=document.getEl
   </div>
   <div id="r"></div>
   <div class="pg"><button class="pill" id="prev">Previous</button><span id="pn"></span><button class="pill" id="next">Next</button></div>
-  <footer>Data from CoinGecko. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
+  <footer>Prices from CoinGecko. New tab data from UniSat, updated twice daily. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
 </div>
 <script>
 var API="https://api.coingecko.com/api/v3";
 function $(id){return document.getElementById(id)}
-var TABS={all:"Coins","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
+var TABS={all:"Coins","new":"New","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
+var newRows=[],nflt="all",newUpdated=0;
 var tab=(location.hash.slice(1) in TABS)?location.hash.slice(1):"all",page=1,rows=[],sort={k:null,d:-1},search="",open={};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return"&#"+c.charCodeAt(0)+";"})}
 function note(t){var n=$("note");n.textContent=t;n.style.display=t?"block":"none"}
@@ -161,7 +173,36 @@ function rowHtml(c){
   '<div class="mo"><label>24h Volume</label>'+money(c.total_volume)+'</div><div class="mo"><label>Market Cap</label>'+money(c.market_cap)+'</div>'+
   '<div class="mo"><label>Rank</label>'+(c.market_cap_rank==null?"-":"#"+c.market_cap_rank)+'</div>'+
   '<div class="mo"><label>Last 7 days</label>'+sp+'</div></div></div>'}
+function layout(){var n=tab==="new";$("head").style.display=n?"none":"";$("sortsel").style.display=n?"none":"";$("nf").style.display=n?"block":"none"}
+function ago(s){if(!s)return"-";var h=(Date.now()/1e3-s)/3600;if(h<1)return"<1h ago";if(h<48)return Math.floor(h)+"h ago";var d=h/24;if(d<60)return Math.floor(d)+"d ago";return Math.floor(d/30)+"mo ago"}
+function newRow(t){
+  var ini=esc(String(t.name||"?").charAt(0).toUpperCase());
+  var mint=t.mint_pct==null?"-":t.mint_pct+'%<span class="bar"><i style="width:'+Math.min(t.mint_pct,100)+'%"></i></span>';
+  return'<div class="row nr"><span class="c"><span class="ini">'+ini+'</span><span class="nm">'+esc(t.name||"?")+'<small>'+esc(t.type)+'</small></span></span>'+
+  '<div class="st"><label>Deployed</label>'+ago(t.deployed)+'</div>'+
+  '<div class="st"><label>Minted</label>'+mint+'</div>'+
+  '<div class="st"><label>Holders</label>'+(t.holders?Number(t.holders).toLocaleString():"-")+'</div>'+
+  '<div class="st"><label>Txs</label>'+(t.txs?Number(t.txs).toLocaleString():"-")+'</div>'+
+  '<div class="st"><label>Price</label>'+(t.price_usd?price(t.price_usd):"-")+'</div></div>'}
+function drawNew(){
+  layout();
+  var s=search.toLowerCase();
+  var l=newRows.filter(function(t){return(nflt==="all"||t.type===nflt)&&(!s||String(t.name).toLowerCase().indexOf(s)>-1)})
+    .sort(function(a,b){return(b.deployed||0)-(a.deployed||0)}).slice(0,100);
+  $("nf").innerHTML=[["all","All"],["BRC-20","BRC-20"],["Rune","Runes"]].map(function(p){return'<button class="tab'+(nflt===p[0]?" on":"")+'" data-k="'+p[0]+'">'+p[1]+'</button>'}).join("")+
+    (newUpdated?' <span style="color:var(--m);font-size:12px;margin-left:6px">Updated '+ago(newUpdated)+'</span>':"");
+  $("r").innerHTML=l.map(newRow).join("")||'<div class="empty">'+(newRows.length?"No results.":"New coin data is not ready yet. It fills in after the next scheduled update.")+'</div>';
+  $("pn").textContent="";$("prev").style.display=$("next").style.display="none";
+}
+async function loadNew(){
+  try{var r=await fetch("data/tokens.json?t="+Math.floor(Date.now()/600000));if(!r.ok)throw new Error(r.status);
+    var j=await r.json();newRows=(j.tokens||[]).filter(function(t){return t.deployed>0});newUpdated=j.updated||0;note("")}
+  catch(e){newRows=[];note("Could not load new coins right now. Try refreshing.")}
+  drawNew();
+}
 function draw(){
+  if(tab==="new"){drawNew();return}
+  layout();
   var l=rows.slice();
   if(sort.k)l.sort(function(a,b){var x=a[sort.k],y=b[sort.k];if(x==null)return 1;if(y==null)return-1;
     return(typeof x==="string"?x.localeCompare(y):x-y)*sort.d});
@@ -176,6 +217,7 @@ function draw(){
 var MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
 async function load(){
   $("r").innerHTML='<div class="empty">Loading...</div>';
+  if(tab==="new"){await loadNew();return}
   try{
     if(search){
       var s=await get("/search?query="+encodeURIComponent(search));
@@ -205,7 +247,8 @@ $("r").onclick=function(e){var el=e.target;while(el&&el!==this&&!(el.className&&
   if(!el||el===this)return;var id=el.getAttribute("data-id");open[id]=!open[id];
   if(open[id])el.className="row open";else el.className="row"};
 $("prev").onclick=function(){page--;load();scrollTo(0,0)};$("next").onclick=function(){page++;load();scrollTo(0,0)};
-var tm;$("q").oninput=function(e){clearTimeout(tm);var v=e.target.value.trim();tm=setTimeout(function(){search=v;page=1;load()},500)};
+var tm;$("q").oninput=function(e){clearTimeout(tm);var v=e.target.value.trim();tm=setTimeout(function(){search=v;page=1;if(tab==="new")drawNew();else load()},500)};
+$("nf").onclick=function(e){var k=e.target.getAttribute("data-k");if(k){nflt=k;drawNew()}};
 async function stats(){try{var g=(await get("/global")).data;
   $("stats").innerHTML='<div class="chip"><label>Coins</label><b>'+g.active_cryptocurrencies.toLocaleString()+'</b></div>'+
   '<div class="chip"><label>Market Cap</label><b>'+money(g.total_market_cap.usd)+'</b></div>'+
