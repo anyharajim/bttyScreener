@@ -217,15 +217,23 @@ print("runes by holders:", len(runes_all))
 
 
 def rune_done(r):
+    if r.get("mintable") is not None:
+        return not r.get("mintable")
     cap_ = num((r.get("terms") or {}).get("cap"))
     return cap_ == 0 or num(r.get("mints")) >= cap_
 
 
 by_norm = {norm(r.get("spacedRune") or r.get("rune")): r for r in runes_all}
+if runes_all:
+    print("rune sample keys:", sorted(runes_all[0].keys()))
 minted_rn = {}
 for c in cg_rn:
     r = by_norm.get(norm(c.get("name"))) or by_norm.get(norm(c.get("symbol")))
-    minted_rn[c["id"]] = bool(r and rune_done(r))
+    ok = bool(r and rune_done(r))
+    minted_rn[c["id"]] = ok
+    print("rune", c["id"], "|", c.get("name"), "|", c.get("symbol"), "| matched:", bool(r),
+          "| mintable:", (r or {}).get("mintable"), "mints:", (r or {}).get("mints"),
+          "cap:", ((r or {}).get("terms") or {}).get("cap"), "->", ok)
 
 d = call("/v1/indexer/runes/info-list?sort=timestamp&start=0&limit=1")
 rtotal = int(num((d or {}).get("total")))
