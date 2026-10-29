@@ -105,12 +105,19 @@ if total > NEW_BRC20:
         print("newest brc20 deploy times: min", min(times), "max", max(times))
 
 # 3) Runes -----------------------------------------------------------------
-for sort in ("timestamp", "transactions"):
+d = call("/v1/indexer/runes/info-list?sort=timestamp&start=0&limit=1")
+rtotal = int(num((d or {}).get("total")))
+queries = [("transactions", 0)]
+if rtotal > 100:
+    queries.append(("timestamp", rtotal - 100))  # list is oldest-first, so the newest runes are at the end
+for sort, start in queries:
     time.sleep(0.4)
-    d = call("/v1/indexer/runes/info-list?sort=%s&start=0&limit=100" % sort)
+    d = call("/v1/indexer/runes/info-list?sort=%s&start=%d&limit=100" % (sort, start))
     if not d:
         continue
-    print("runes", sort, len(d.get("detail") or []), "of", d.get("total"))
+    ts = [int(num(r.get("timestamp"))) for r in d.get("detail") or []]
+    print("runes", sort, "start", start, "n", len(ts), "of", d.get("total"),
+          "timestamps min/max", (min(ts), max(ts)) if ts else None)
     for r in d.get("detail") or []:
         cap_ = num((r.get("terms") or {}).get("cap"))
         mints = num(r.get("mints"))
