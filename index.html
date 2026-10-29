@@ -131,23 +131,30 @@ window.onerror=function(){var n=document.getElementById("note"),s=document.getEl
   </div>
   <div id="r"></div>
   <div class="pg"><button class="pill" id="prev">Previous</button><span id="pn"></span><button class="pill" id="next">Next</button></div>
-  <footer>Prices from CoinGecko. New tab data from UniSat, updated twice daily. Prices can lag. Not financial advice. Only tokens with a photo are listed, and BRC-20s and Runes only appear once minting is complete (except $BTTY).</footer>
+  <footer>Coins, Runes and Trending prices come from CoinGecko. BRC-20 prices, volume and charts come from UniSat and refresh twice daily (about 06:00 and 18:00 UTC), so they can lag. Not financial advice. Only tokens with a photo are listed, and BRC-20s and Runes only appear once minting is complete (except $BTTY).</footer>
 </div>
 <script>
 var API="https://api.coingecko.com/api/v3";
 function $(id){return document.getElementById(id)}
 var TABS={all:"Coins","new":"New","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
 var newRows=[],nflt="all",newUpdated=0,meta=null,metaP=null;
-var BT={id:"btty",name:"BTTY",symbol:"BRC-20",image:"logo.jpg",market_cap_rank:null};
+var BT={id:"btty",name:"BTTY",symbol:"BRC-20",image:"btty.png",market_cap_rank:null};
 function loadMeta(){return fetch("data/coins.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){meta=j}).catch(function(){meta=null})}
 function okCoin(c){
+  if(c.src==="u")return String(c.name).toLowerCase()!=="btty";
   if(c.id==="btty"||String(c.symbol).toLowerCase()==="btty")return false;
   if(!c.image||/missing/i.test(c.image))return false;
   var m=meta&&meta.members&&meta.members[c.id];
   if(tab==="brc-20"||tab==="runes"){if(!meta)return true;return !!(m&&m.minted===true)}
   return !(m&&m.minted!==true);
 }
+var market=null,marketP=null;
+function loadMarket(){return fetch("data/market.json?t="+Math.floor(Date.now()/60000),{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){market=j}).catch(function(){market=null})}
+function mrow(t){var o={id:"u:"+t.tick,name:t.tick,symbol:"BRC-20",src:"u",image:t.tick.toLowerCase()==="btty"?"btty.png":t.image,market_cap_rank:t.rank,
+  current_price:t.price_usd,total_volume:t.vol24_usd,market_cap:t.cap_usd,sparkline_in_7d:{price:t.spark||[]}};
+  o[C24]=t.ch24;o[C7]=t.ch7;return o}
 function btRow(){
+  if(market&&market.tokens)for(var i=0;i<market.tokens.length;i++)if(market.tokens[i].tick.toLowerCase()==="btty")return mrow(market.tokens[i]);
   var b=(meta&&meta.btty)||{},o={};for(var k in BT)o[k]=BT[k];
   o.current_price=b.price_usd||null;o[C24]=b.change==null?null:b.change;o.market_cap=b.cap_usd||null;o.total_volume=b.volume_usd||null;return o}
 function showBt(){
@@ -176,7 +183,7 @@ function money(n){return n==null?"-":"$"+Number(n).toLocaleString(undefined,{max
 function price(n){if(n==null)return"-";n=Number(n);if(n>=1)return"$"+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   return"$"+(n>=0.01?n.toFixed(4):n.toPrecision(4))}
 function pct(n){return n==null?"-":'<span class="'+(n>=0?"up":"dn")+'">'+(n>=0?"▲":"▼")+" "+Math.abs(n).toFixed(1)+"%</span>"}
-function spark(a){if(!a||a.length<2)return"";var p=a.filter(function(_,i){return i%4===0}),mn=Math.min.apply(null,p),mx=Math.max.apply(null,p),h=mx-mn||1;
+function spark(a){if(!a||a.length<2)return"";var p=a.length>60?a.filter(function(_,i){return i%4===0}):a,mn=Math.min.apply(null,p),mx=Math.max.apply(null,p),h=mx-mn||1;
   var pts=p.map(function(v,i){return(i/(p.length-1)*110).toFixed(1)+","+(30-(v-mn)/h*28-1).toFixed(1)}).join(" ");
   var up=p[p.length-1]>=p[0];return'<svg width="110" height="30" viewBox="0 0 110 30"><polyline fill="none" stroke="'+(up?"#16a34a":"#dc2626")+'" stroke-width="1.8" stroke-linecap="round" points="'+pts+'"/></svg>'}
 var C1="price_change_percentage_1h_in_currency",C24="price_change_percentage_24h_in_currency",C7="price_change_percentage_7d_in_currency";
@@ -229,7 +236,7 @@ function draw(){
   $("r").innerHTML=l.map(rowHtml).join("")||'<div class="empty">No results.</div>';
   var hs=document.querySelectorAll("#head span[data-k]");
   for(var i=0;i<hs.length;i++){hs[i].className=hs[i].getAttribute("data-k")===sort.k?(sort.d===1?"asc":"desc"):""}
-  var nopg=search||tab==="trending";
+  var nopg=search||tab==="trending"||tab==="brc-20";
   $("pn").textContent=nopg?"":"Page "+page;
   $("prev").style.display=$("next").style.display=nopg?"none":"";
   $("prev").disabled=page<=1;
@@ -238,9 +245,14 @@ var MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
 async function load(){
   $("r").innerHTML='<div class="empty">Loading...</div>';
   await (metaP||(metaP=loadMeta()));
+  await (marketP||(marketP=loadMarket()));
   if(tab==="new"){await loadNew();return}
   try{
-    if(search){
+    if(tab==="brc-20"){
+      var q=search.toLowerCase();
+      rows=((market&&market.tokens)||[]).filter(function(t){return!q||t.tick.toLowerCase().indexOf(q)>-1}).map(mrow);
+      if(!market)note("Could not load BRC-20 data right now. Try refreshing.");
+    }else if(search){
       var s=await get("/search?query="+encodeURIComponent(search));
       var ids=s.coins.slice(0,30).map(function(c){return c.id}).join(",");
       rows=ids?await get("/coins/markets?ids="+ids+"&order=market_cap_desc"+MK):[];
