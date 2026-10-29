@@ -273,22 +273,46 @@ ICON = "https://static.unisat.space/icon/brc20/%s"
 MARKET = os.path.join(DATA, "market.json")
 
 
-def market(tt):
+REF_FIRST = {}
+
+
+def market(tt, tl=None):
     out, bp = [], 0.0
     for p in range(MAX_PAGES):
-        d = call("/v3/market/brc20/auction/brc20_types", {"timeType": tt, "start": p * 100, "limit": 100})
+        body = {"timeType": tt, "start": p * 100, "limit": 100}
+        if tl:
+            body["tickLen"] = tl
+        d = call("/v3/market/brc20/auction/brc20_types", body)
         if not d:
             break
         bp = num(d.get("BTCPrice")) or bp
         lst = d.get("list") or []
         if p == 0:
-            print("market", tt, "keys", sorted(d.keys()), "total", d.get("total"))
-            print("market", tt, "item keys", sorted(lst[0].keys()) if lst else None)
+            print("market", tt, "tickLen", tl, "total", d.get("total"), "first", [str(z.get("tick")) for z in lst[:5]])
+        if tl and p == 0 and lst and str(lst[0].get("tick")) == REF_FIRST.get(tt):
+            print("tickLen filter ignored; skipping")
+            return [], bp
         out += lst
+        if tl is None and p == 0 and lst:
+            REF_FIRST[tt] = str(lst[0].get("tick"))
         if len(lst) < 100:
             break
         time.sleep(0.3)
-    print("market", tt, "items", len(out), "btc", bp)
+    print("market", tt, "tickLen", tl, "items", len(out), "btc", bp)
+    return out, bp
+
+
+def market_all(tt):
+    seen, out, bp = set(), [], 0.0
+    for tl in (None, 5, 6, 7, 8):
+        lst, b = market(tt, tl)
+        bp = b or bp
+        for z in lst:
+            k = str(z.get("tick"))
+            if k not in seen:
+                seen.add(k)
+                out.append(z)
+        time.sleep(0.3)
     return out, bp
 
 
@@ -321,11 +345,11 @@ def kline(tick, btcp):
     return pts, (json.dumps(d)[:300] if d is not None else None)
 
 
-d1, btc1 = market("day1")
+d1, btc1 = market_all("day1")
 time.sleep(0.3)
-d7, btc7 = market("day7")
+d7, btc7 = market_all("day7")
 time.sleep(0.3)
-d30, btc30 = market("day30")
+d30, btc30 = market_all("day30")
 btcp = btc1 or btc7 or btc30 or btc
 m7 = {str(x.get("tick")): x for x in d7}
 m30 = {str(x.get("tick")): x for x in d30}
