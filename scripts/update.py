@@ -5,10 +5,12 @@ Sources:
   - Newest BRC-20 deployments (list tail + per-ticker info: supply, minted, holders)
   - Runes: newest and most active (info-list)
 """
-import json, os, sys, time, urllib.request, urllib.error, urllib.parse
+import json, os, re, sys, time, urllib.request, urllib.error, urllib.parse
 
 BASE = "https://open-api.unisat.io"
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "tokens.json")
+DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+OUT = os.path.join(DATA, "tokens.json")
+OUT2 = os.path.join(DATA, "coins.json")
 KEY = os.environ.get("UNISAT_API_KEY", "").strip()
 NEW_BRC20 = 40  # how many of the newest BRC-20 tickers to look up
 
@@ -58,7 +60,87 @@ def add(t):
     items[t["id"]] = old
 
 
-# 1) BRC-20 market stats --------------------------------------------------
+
+def norm(s):
+    s = str(s or "").lower().replace("(runes)", "")
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def cg(category, pages=2):
+    """CoinGecko markets list for a category (id, symbol, name, image). Returns [] if blocked."""
+    out = []
+    for p in range(1, pages + 1):
+        url = ("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=%s"
+               "&order=market_cap_desc&per_page=250&page=%d&sparkline=false" % (category, p))
+        d = None
+        for i in range(4):
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "bttyScreener", "Accept": "application/json"})
+                d = json.loads(urllib.request.urlopen(req, timeout=30).read().decode())
+                break
+            except Exception as e:
+                print("CoinGecko", category, "attempt", i + 1, e)
+                time.sleep(15 * (i + 1))
+        if not d:
+            break
+        out += d
+        if len(d) < 250:
+            break
+        time.sleep(8)
+    print("coingecko", category, len(out))
+    return out
+
+
+try:
+    prev = {t["id"]: t for t in json.load(open(OUT))["tokens"]}
+except Exception:
+    prev = {}
+try:
+    prev_cg = json.load(open(OUT2))
+except Exception:
+    prev_cg = {}
+
+# 0) CoinGecko lists (photos + which coins are BRC-20 / Runes) ---------------
+cg_b20 = cg("brc-20")
+time.sleep(8)
+cg_rn = cg("runes")
+if not cg_b20 and not cg_rn:
+    print("CoinGecko unavailable; keeping previous photo/member lists")
+b20_img = {str(c["symbol"]).lower(): c.get("image") for c in cg_b20 if c.get("image")}
+rn_img = {}
+for c in cg_rn:
+    for k in (norm(c.get("name")), norm(c.get("symbol"))):
+        if k and c.get("image"):
+            rn_img[k] = c["image"]
+
+brc_cache = {}
+
+
+def brc20_item(t):
+    """Look up a BRC-20 ticker; returns dict or None. Finished tokens are not looked up again."""
+    key = t.lower()
+    if key in brc_cache:
+        return brc_cache[key]
+    old = prev.get("brc20:" + t) or {}
+    if (old.get("mint_pct") or 0) >= 100 and old.get("holders"):
+        brc_cache[key] = None
+        return None
+    if not t.isalnum():
+        return None
+    time.sleep(0.25)
+    info = call("/v1/indexer/brc20/%s/info" % urllib.parse.quote(t))
+    if not info:
+        return None
+    mx, mn = num(info.get("max")), num(info.get("totalMinted") or info.get("minted"))
+    r = {"id": "brc20:" + (info.get("ticker") or t), "type": "BRC-20", "name": info.get("ticker") or t,
+         "deployed": int(num(info.get("deployBlocktime"))), "holders": int(num(info.get("holdersCount"))),
+         "mint_pct": round(mn / mx * 100, 2) if mx else None, "txs": int(num(info.get("historyCount")))}
+    brc_cache[key] = r
+    return r
+
+
+# 1) BRC-20 market stats (top 100) + BTTY -----------------------------------
+btc = 0.0
 d = call("/v3/market/brc20/auction/brc20_types", {"timeType": "day1", "start": 0, "limit": 100})
 if d:
     btc = num(d.get("BTCPrice"))
@@ -71,72 +153,116 @@ if d:
         add({"id": "brc20:" + tick, "type": "BRC-20", "name": tick,
              "deployed": int(num(r.get("deployTime"))), "holders": int(num(r.get("holders"))),
              "price_usd": price_usd, "change": num(r.get("changePercent")),
-             "cap_usd": num(r.get("capUSD")), "mint_pct": None, "txs": 0})
+             "cap_usd": num(r.get("capUSD")), "txs": 0})
 time.sleep(0.4)
 
-# 2) Newest BRC-20 deployments --------------------------------------------
+btty = dict(prev_cg.get("btty") or {})
+d = call("/v3/market/brc20/auction/brc20_types", {"timeType": "day1", "start": 0, "limit": 5, "ticks": ["btty"]})
+if d:
+    btc = btc or num(d.get("BTCPrice"))
+    print("BTTY raw:", json.dumps((d.get("list") or [])[:1])[:400])
+    for r in d.get("list") or []:
+        if str(r.get("tick")).lower() == "btty":
+            btty.update({"price_usd": num(r.get("curPrice")) * btc / 1e8 if btc > 1000 else None,
+                         "change": num(r.get("changePercent")), "cap_usd": num(r.get("capUSD")),
+                         "holders": int(num(r.get("holders")))})
+time.sleep(0.4)
+bi = brc20_item("btty")
+if bi:
+    btty["holders"] = bi["holders"] or btty.get("holders")
+    btty["mint_pct"] = bi["mint_pct"]
+print("BTTY:", btty)
+
+# 2) Mint status for top-100 market tickers, CoinGecko BRC-20 coins, newest deployments
+want = [k.split(":", 1)[1] for k in items if k.startswith("brc20:")]
+want += [str(c["symbol"]) for c in cg_b20]
 d = call("/v1/indexer/brc20/list?start=0&limit=1")
 total = int(num((d or {}).get("total")))
 print("brc20 total tickers:", total)
 if total > NEW_BRC20:
     d = call("/v1/indexer/brc20/list?start=%d&limit=%d" % (total - NEW_BRC20, NEW_BRC20))
-    detail = (d or {}).get("detail") or []
-    print("brc20 list tail:", len(detail), "sample:", json.dumps(detail[:2])[:200])
-    ticks = []
-    for x in detail:
+    for x in (d or {}).get("detail") or []:
         t = x if isinstance(x, str) else (x.get("ticker") or x.get("tick") or "")
         if t:
-            ticks.append(t)
-    times = []
-    for t in ticks:
-        if not t.isalnum():
-            continue  # special-character tickers need hex paths; skip
-        time.sleep(0.25)
-        info = call("/v1/indexer/brc20/%s/info" % urllib.parse.quote(t))
-        if not info:
-            continue
-        mx, mn = num(info.get("max")), num(info.get("totalMinted") or info.get("minted"))
-        dep = int(num(info.get("deployBlocktime")))
-        times.append(dep)
-        add({"id": "brc20:" + (info.get("ticker") or t), "type": "BRC-20", "name": info.get("ticker") or t,
-             "deployed": dep, "holders": int(num(info.get("holdersCount"))),
-             "mint_pct": round(mn / mx * 100, 2) if mx else None, "txs": int(num(info.get("historyCount")))})
-    if times:
-        print("newest brc20 deploy times: min", min(times), "max", max(times))
+            want.append(t)
+seen = set()
+minted_b20 = {}
+for t in want:
+    if t.lower() in seen:
+        continue
+    seen.add(t.lower())
+    r = brc20_item(t)
+    if r:
+        add(r)
+for c in cg_b20:  # minted flag for each CoinGecko BRC-20 coin
+    sym = str(c["symbol"]).lower()
+    rec = items.get("brc20:" + str(c["symbol"]).upper()) or items.get("brc20:" + sym)
+    rec = rec or next((v for k, v in {**prev, **items}.items() if k.lower() == "brc20:" + sym), None)
+    pct = (rec or {}).get("mint_pct")
+    minted_b20[c["id"]] = (pct is not None and pct >= 100)
 
 # 3) Runes -----------------------------------------------------------------
+runes_all = []
+for st in (0, 500):
+    time.sleep(0.4)
+    d = call("/v1/indexer/runes/info-list?sort=holders&start=%d&limit=500" % st)
+    runes_all += (d or {}).get("detail") or []
+print("runes by holders:", len(runes_all))
+
+
+def rune_done(r):
+    cap_ = num((r.get("terms") or {}).get("cap"))
+    return cap_ == 0 or num(r.get("mints")) >= cap_
+
+
+by_norm = {norm(r.get("spacedRune") or r.get("rune")): r for r in runes_all}
+minted_rn = {}
+for c in cg_rn:
+    r = by_norm.get(norm(c.get("name"))) or by_norm.get(norm(c.get("symbol")))
+    minted_rn[c["id"]] = bool(r and rune_done(r))
+
 d = call("/v1/indexer/runes/info-list?sort=timestamp&start=0&limit=1")
 rtotal = int(num((d or {}).get("total")))
 queries = [("transactions", 0)]
 if rtotal > 100:
-    queries.append(("timestamp", rtotal - 100))  # list is oldest-first, so the newest runes are at the end
+    queries.append(("timestamp", rtotal - 100))  # oldest-first list: newest runes are at the end
 for sort, start in queries:
     time.sleep(0.4)
     d = call("/v1/indexer/runes/info-list?sort=%s&start=%d&limit=100" % (sort, start))
     if not d:
         continue
-    ts = [int(num(r.get("timestamp"))) for r in d.get("detail") or []]
-    print("runes", sort, "start", start, "n", len(ts), "of", d.get("total"),
-          "timestamps min/max", (min(ts), max(ts)) if ts else None)
     for r in d.get("detail") or []:
         cap_ = num((r.get("terms") or {}).get("cap"))
         mints = num(r.get("mints"))
         add({"id": "rune:" + str(r.get("runeid")), "type": "Rune", "name": r.get("spacedRune") or r.get("rune"),
              "deployed": int(num(r.get("timestamp"))), "holders": int(num(r.get("holders"))),
-             "mint_pct": round(min(mints / cap_ * 100, 100), 2) if cap_ else None,
+             "mint_pct": round(min(mints / cap_ * 100, 100), 2) if cap_ else 100.0,
              "txs": int(num(r.get("transactions")))})
 
 if not items:
     sys.exit("No data fetched from UniSat (see messages above). Data file left unchanged.")
 
+# merge + photos ------------------------------------------------------------
 now = int(time.time())
-try:
-    old = {t["id"]: t for t in json.load(open(OUT))["tokens"]}
-except Exception:
-    old = {}
+old = dict(prev)
 for k, t in items.items():
     t["first_seen"] = old.get(k, {}).get("first_seen", now)
-    old[k] = t
+    old[k] = {**old.get(k, {}), **t}
+for t in old.values():
+    img = b20_img.get(str(t.get("name")).lower()) if t.get("type") == "BRC-20" else rn_img.get(norm(t.get("name")))
+    if img:
+        t["image"] = img
 tokens = sorted(old.values(), key=lambda t: t.get("deployed") or 0, reverse=True)[:800]
 json.dump({"updated": now, "tokens": tokens}, open(OUT, "w"), separators=(",", ":"))
-print("saved", len(tokens), "tokens;", len(items), "fetched this run")
+
+members = {}
+if cg_b20 or cg_rn:
+    for c in cg_b20:
+        members[c["id"]] = {"t": "BRC-20", "minted": minted_b20.get(c["id"], False)}
+    for c in cg_rn:
+        members[c["id"]] = {"t": "Rune", "minted": minted_rn.get(c["id"], False)}
+else:
+    members = prev_cg.get("members") or {}
+json.dump({"updated": now, "btty": btty, "members": members}, open(OUT2, "w"), separators=(",", ":"))
+print("saved", len(tokens), "tokens;", len(items), "fetched;", len(members), "coin members,",
+      sum(1 for m in members.values() if m["minted"]), "fully minted")
