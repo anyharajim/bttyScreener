@@ -268,7 +268,7 @@ for sort, start in queries:
              "txs": int(num(r.get("transactions")))})
 
 # 4) BRC-20 market table (price, 24h/7d change, volume, cap, photo, 7-day chart) ---------
-MAX_PAGES = 10
+MAX_PAGES = 25
 ICON = "https://static.unisat.space/icon/brc20/%s"
 MARKET = os.path.join(DATA, "market.json")
 
@@ -310,7 +310,7 @@ def kline(tick, btcp):
     for it in lst:
         if isinstance(it, dict):
             v = None
-            for k in ("close", "price", "avgPrice", "curPrice", "open"):
+            for k in ("unitPrice", "close", "price", "avgPrice", "curPrice", "open"):
                 if it.get(k) not in (None, "", 0):
                     v = num(it.get(k))
                     break
@@ -324,8 +324,11 @@ def kline(tick, btcp):
 d1, btc1 = market("day1")
 time.sleep(0.3)
 d7, btc7 = market("day7")
-btcp = btc1 or btc7 or btc
+time.sleep(0.3)
+d30, btc30 = market("day30")
+btcp = btc1 or btc7 or btc30 or btc
 m7 = {str(x.get("tick")): x for x in d7}
+m30 = {str(x.get("tick")): x for x in d30}
 cand = []
 for x in d1:
     t = str(x.get("tick") or "")
@@ -335,7 +338,7 @@ for x in d1:
     if t.lower() != "btty" and not (0 < capu < 1e10 and int(num(x.get("holders"))) > 0):
         continue
     cand.append(x)
-cand.sort(key=lambda x: num(x.get("capUSD")), reverse=True)
+cand.sort(key=lambda x: (num((m30.get(str(x.get("tick"))) or {}).get("btcVolume")), num(x.get("capUSD"))), reverse=True)
 cand = cand[:250]
 print("market candidates", len(cand))
 
@@ -374,7 +377,8 @@ for i, x in enumerate(final):
     mt.append({"tick": t, "image": ICON % urllib.parse.quote(t),
                "price_usd": num(x.get("curPrice")) * btcp / 1e8 if btcp > 1000 else None,
                "ch24": num(x.get("changePercent")), "ch7": num(y.get("changePercent")) if y else None,
-               "vol24_usd": num(x.get("btcVolume")) * btcp, "vol7_usd": num(y.get("btcVolume")) * btcp if y else None,
+               "vol24_usd": num(x.get("btcVolume")) / 1e8 * btcp, "vol7_usd": num(y.get("btcVolume")) / 1e8 * btcp if y else None,
+               "vol30_usd": num((m30.get(t) or {}).get("btcVolume")) / 1e8 * btcp,
                "cap_usd": num(x.get("capUSD")), "holders": int(num(x.get("holders"))), "spark": pts})
 mt = mt[:100] if not any(z["tick"].lower() == "btty" for z in mt[100:]) else mt[:100] + [z for z in mt[100:] if z["tick"].lower() == "btty"]
 for i, z in enumerate(mt):
