@@ -1,122 +1,219 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#ef8d12">
 <title>bttyScreener</title><link rel="icon" href="logo.jpg">
 <style>
-:root{--o:#ef8d12;--o2:#fff3e3;--t:#1c1c1c;--m:#6b6b6b;--b:#f0e3d2;--g:#16a34a;--r:#dc2626}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#fff;color:var(--t)}
-header{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:3px solid var(--o);flex-wrap:wrap;position:sticky;top:0;background:#fff;z-index:5}
-header img{width:42px;height:42px;border-radius:10px}header b{font-size:22px;color:var(--o)}
-#q{margin-left:auto;font:inherit;padding:8px 14px;border:1px solid var(--o);border-radius:8px;min-width:200px;color:var(--t)}
-main{max-width:1200px;margin:0 auto;padding:14px}
-#stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--m);font-size:13px;margin-bottom:12px}#stats b{color:var(--t)}
-#tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--o);background:#fff;color:var(--o);cursor:pointer}
-button.on{background:var(--o);color:#fff}button:disabled{opacity:.4;cursor:default}
-#note{background:var(--o2);border:1px solid var(--o);border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:12px;display:none}
-.w{overflow-x:auto}table{width:100%;border-collapse:collapse}
-th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--b);white-space:nowrap;font-size:14px}
-th{color:var(--m);font-weight:600;font-size:12px;cursor:pointer;user-select:none}
-th:nth-child(1),td:nth-child(1){text-align:left;color:var(--m)}th:nth-child(2),td:nth-child(2){text-align:left}
-tbody tr:hover td{background:var(--o2)}
-.c{display:flex;align-items:center;gap:8px;font-weight:600}.c img{width:24px;height:24px;border-radius:50%}.c small{color:var(--m);font-weight:400;text-transform:uppercase}
+:root{--o:#ef8d12;--o2:#fff0dc;--o3:#fff8f0;--t:#1c1c1c;--m:#7a7a7a;--g:#16a34a;--r:#dc2626;--sh:0 10px 28px rgba(239,141,18,.18)}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--t);min-height:100vh;
+  background:#ffe9cf;background:linear-gradient(160deg,#ffe3c0 0%,#fffaf4 45%,#ffdcae 100%);background-attachment:fixed}
+.shell{max-width:1120px;margin:28px auto;background:#fff;border-radius:34px;box-shadow:0 30px 80px rgba(120,70,0,.18);padding:22px 26px 26px}
+.top{display:flex;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:center;margin-right:22px}
+.brand img{width:42px;height:42px;border-radius:13px;margin-right:10px}
+.brand b{font-size:20px;color:var(--t)}
+#tabs{display:flex;flex-wrap:wrap}
+.tab{border:0;background:#fff;color:var(--t);box-shadow:0 4px 14px rgba(0,0,0,.09);border-radius:999px;padding:10px 20px;margin-right:10px;font:inherit;font-size:14px;cursor:pointer;-webkit-appearance:none}
+.tab.on{background:var(--o);color:#fff;box-shadow:0 8px 20px rgba(239,141,18,.45)}
+#q{margin-left:auto;font:inherit;font-size:14px;padding:11px 18px;border:0;border-radius:999px;background:var(--o3);box-shadow:inset 0 2px 6px rgba(0,0,0,.07);min-width:220px;color:var(--t);outline:none;-webkit-appearance:none}
+#q:focus{box-shadow:inset 0 2px 6px rgba(0,0,0,.07),0 0 0 2px var(--o)}
+.hero{display:flex;align-items:center;justify-content:space-between;margin:22px 0 18px;padding:30px 36px;border-radius:28px;overflow:hidden;
+  background:#f4a136;background:linear-gradient(115deg,#ef8d12 0%,#f8b865 100%)}
+.hero h1{font-size:32px;line-height:1.15;margin:0 0 18px;max-width:470px;color:#1a1a1a}
+.cta{border:0;background:#1a1a1a;color:#fff;font:inherit;font-size:14px;padding:11px 24px;border-radius:999px;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.25);-webkit-appearance:none}
+.hero img{width:136px;height:136px;border-radius:34px;box-shadow:0 18px 40px rgba(0,0,0,.28);-webkit-transform:rotate(6deg);transform:rotate(6deg);flex:none;margin-left:20px}
+.stats{display:flex;flex-wrap:wrap;margin:0 -6px 8px}
+.chip{flex:1 1 150px;margin:6px;padding:13px 18px;border-radius:20px;background:var(--o3)}
+.chip label{display:block;color:var(--m);font-size:12px;margin-bottom:3px}.chip b{font-size:16px}
+#note{background:var(--o2);border-radius:14px;padding:10px 14px;font-size:13px;margin:8px 0;display:none}
+.mobsort{display:none;width:100%;font:inherit;font-size:14px;padding:11px 16px;border:0;border-radius:999px;background:var(--o3);margin:10px 0 4px;color:var(--t);-webkit-appearance:none}
+.head,.main{display:grid;grid-template-columns:44px minmax(170px,2.2fr) 1.2fr 1fr 1.3fr 1.3fr 120px 40px;align-items:center;column-gap:12px}
+.head{padding:12px 22px 8px;color:var(--m);font-size:12px}
+.head span[data-k]{cursor:pointer;user-select:none}
+.head .asc:after{content:" \25B2"}.head .desc:after{content:" \25BC"}
+.row{background:var(--o3);border-radius:22px;margin-bottom:12px;-webkit-transition:box-shadow .2s;transition:box-shadow .2s}
+.row:hover{box-shadow:var(--sh)}
+.row.open{background:var(--o2);box-shadow:var(--sh)}
+.main{padding:16px 22px;cursor:pointer;font-size:15px}
+.rk{color:var(--m)}
+.c{display:flex;align-items:center;min-width:0}
+.c img{width:36px;height:36px;border-radius:50%;margin-right:12px;flex:none}
+.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.nm small{display:block;color:var(--m);font-weight:400;text-transform:uppercase;font-size:12px;margin-top:1px}
+.p{font-weight:600}
 .up{color:var(--g)}.dn{color:var(--r)}
-#pg{display:flex;gap:10px;align-items:center;justify-content:center;margin:16px 0;color:var(--m)}
-footer{text-align:center;color:var(--m);font-size:12px;padding:20px}
-#splash{position:fixed;inset:0;background:#fff;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .5s;animation:autohide .5s 8s forwards}
+.ch{width:36px;height:36px;border-radius:50%;border:0;background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.12);color:var(--o);cursor:pointer;font-size:12px;padding:0;-webkit-appearance:none;-webkit-transition:-webkit-transform .2s;transition:transform .2s}
+.row.open .ch{-webkit-transform:rotate(180deg);transform:rotate(180deg)}
+.more{display:none;padding:2px 22px 18px 78px}
+.row.open .more{display:flex;flex-wrap:wrap}
+.more>div{margin-right:40px;margin-bottom:8px}
+.more label{display:block;color:var(--m);font-size:12px;margin-bottom:4px}
+.mo{display:none}
+.pg{display:flex;justify-content:center;align-items:center;margin:20px 0 4px;color:var(--m)}
+.pill{border:0;background:#fff;color:var(--t);box-shadow:0 4px 14px rgba(0,0,0,.1);border-radius:999px;padding:10px 22px;margin:0 12px;font:inherit;font-size:14px;cursor:pointer;-webkit-appearance:none}
+.pill:disabled{opacity:.4;cursor:default}
+.empty{text-align:center;color:var(--m);padding:40px 0}
+footer{text-align:center;color:var(--m);font-size:12px;padding:20px 10px 0}
+#splash{position:fixed;top:0;left:0;right:0;bottom:0;background:#fff;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .5s;animation:autohide .5s 8s forwards}
 #splash.hide{opacity:0;pointer-events:none}
-#splash img{width:150px;height:150px;border-radius:30px;animation:pulse 1.6s ease-in-out infinite}
+#splash img{width:150px;height:150px;border-radius:30px;margin-bottom:20px;animation:pulse 1.6s ease-in-out infinite}
 #splash b{font-size:36px;color:#000;letter-spacing:.5px}
 @keyframes pulse{50%{transform:scale(1.07)}}
 @keyframes autohide{to{opacity:0;visibility:hidden}}
+@media(max-width:720px){
+  body{background-attachment:scroll}
+  .shell{margin:8px;border-radius:26px;padding:16px 14px 20px;box-shadow:0 14px 40px rgba(120,70,0,.15)}
+  .brand{width:100%;margin:0 0 12px}
+  #tabs{flex-wrap:nowrap;overflow-x:auto;width:100%;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+  .tab{flex:none;padding:9px 18px;margin-right:8px}
+  #q{width:100%;margin:10px 0 0;min-width:0}
+  .hero{padding:22px 20px;margin:16px 0 12px;border-radius:24px}
+  .hero h1{font-size:22px;margin-bottom:14px}
+  .hero img{width:78px;height:78px;border-radius:22px;margin-left:12px}
+  .chip{flex:1 1 40%;padding:11px 14px;margin:5px}
+  .head{display:none}.mobsort{display:block}
+  .main{grid-template-columns:minmax(0,1fr) auto auto 34px;column-gap:10px;padding:13px 14px;font-size:14px}
+  .rk,.dm{display:none}.mo{display:block}
+  .c img{width:32px;height:32px;margin-right:10px}
+  .ch{width:32px;height:32px}
+  .more{padding:2px 14px 14px}
+  .more>div{margin-right:28px}
+  .row{margin-bottom:10px;border-radius:20px}
+}
 </style></head><body>
 <div id="splash"><img src="logo.jpg" alt=""><b>bttyScreener</b></div>
-<header><img src="logo.jpg" alt=""><b>bttyScreener</b><input id="q" placeholder="Search coins..." autocomplete="off"></header>
-<main>
-<div id="stats"></div>
-<div id="tabs"></div>
-<div id="note"></div>
-<div class="w"><table><thead><tr>
-<th data-k="market_cap_rank">#</th><th data-k="name">Coin</th><th data-k="current_price">Price</th>
-<th data-k="price_change_percentage_1h_in_currency">1h</th><th data-k="price_change_percentage_24h_in_currency">24h</th><th data-k="price_change_percentage_7d_in_currency">7d</th>
-<th data-k="total_volume">24h Volume</th><th data-k="market_cap">Market Cap</th><th>Last 7 Days</th></tr></thead>
-<tbody id="r"></tbody></table></div>
-<div id="pg"><button id="prev">Previous</button><span id="pn"></span><button id="next">Next</button></div>
-</main>
-<footer>Data from CoinGecko. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
 <script>
-const API="https://api.coingecko.com/api/v3",$=id=>document.getElementById(id);
-const TABS={all:"Coins","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
-let tab=(location.hash.slice(1) in TABS)?location.hash.slice(1):"all",page=1,rows=[],sort={k:null,d:-1},search="";
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
+window.onerror=function(){var n=document.getElementById("note"),s=document.getElementById("splash");
+  if(n){n.textContent="Something went wrong loading this page. Try refreshing, or update your browser.";n.style.display="block"}
+  if(s)s.style.display="none"};
+</script>
+<div class="shell">
+  <div class="top">
+    <div class="brand"><img src="logo.jpg" alt=""><b>bttyScreener</b></div>
+    <div id="tabs"></div>
+    <input id="q" placeholder="Search coins..." autocomplete="off">
+  </div>
+  <div class="hero">
+    <div><h1>Every coin, including BRC-20 and Runes</h1><button class="cta" id="cta">View BRC-20</button></div>
+    <img src="logo.jpg" alt="">
+  </div>
+  <div class="stats" id="stats"></div>
+  <div id="note"></div>
+  <select class="mobsort" id="sortsel">
+    <option value="">Sort: Default</option>
+    <option value="current_price|-1">Price: high to low</option>
+    <option value="price_change_percentage_24h_in_currency|-1">24h change: best first</option>
+    <option value="price_change_percentage_24h_in_currency|1">24h change: worst first</option>
+    <option value="total_volume|-1">Volume: high to low</option>
+    <option value="market_cap|-1">Market cap: high to low</option>
+    <option value="name|1">Name: A to Z</option>
+  </select>
+  <div class="head" id="head">
+    <span data-k="market_cap_rank">#</span><span data-k="name">Coin</span><span data-k="current_price">Price</span>
+    <span data-k="price_change_percentage_24h_in_currency">24h</span><span data-k="total_volume">24h Volume</span>
+    <span data-k="market_cap">Market Cap</span><span>Last 7 Days</span><span></span>
+  </div>
+  <div id="r"></div>
+  <div class="pg"><button class="pill" id="prev">Previous</button><span id="pn"></span><button class="pill" id="next">Next</button></div>
+  <footer>Data from CoinGecko. Prices can lag. Not financial advice. BRC-20 and Rune tabs only show tokens CoinGecko lists.</footer>
+</div>
+<script>
+var API="https://api.coingecko.com/api/v3";
+function $(id){return document.getElementById(id)}
+var TABS={all:"Coins","brc-20":"BRC-20",runes:"Runes",trending:"Trending"};
+var tab=(location.hash.slice(1) in TABS)?location.hash.slice(1):"all",page=1,rows=[],sort={k:null,d:-1},search="",open={};
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return"&#"+c.charCodeAt(0)+";"})}
+function note(t){var n=$("note");n.textContent=t;n.style.display=t?"block":"none"}
 async function get(path){
-  const key="cg:"+path,now=Date.now();
-  try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c&&now-c.t<60000)return c.d}catch(e){}
+  var key="cg:"+path,now=Date.now();
+  try{var c=JSON.parse(localStorage.getItem(key)||"null");if(c&&now-c.t<60000)return c.d}catch(e){}
   try{
-    const r=await fetch(API+path);
+    var r=await fetch(API+path);
     if(!r.ok)throw new Error(r.status);
-    const d=await r.json();
-    try{localStorage.setItem(key,JSON.stringify({t:now,d}))}catch(e){}
+    var d=await r.json();
+    try{localStorage.setItem(key,JSON.stringify({t:now,d:d}))}catch(e){}
     note("");return d;
   }catch(e){
-    try{const c=JSON.parse(localStorage.getItem(key)||"null");if(c){note("CoinGecko is rate limiting requests, so this may be a minute or two old.");return c.d}}catch(x){}
-    note(e.message==="429"?"CoinGecko rate limit reached. Wait a minute and refresh.":"Could not load data right now.");
+    try{var c2=JSON.parse(localStorage.getItem(key)||"null");if(c2){note("CoinGecko is rate limiting requests, so this may be a minute or two old.");return c2.d}}catch(x){}
+    note(String(e.message)==="429"?"CoinGecko rate limit reached. Wait a minute and refresh.":"Could not load data right now. Check your connection and refresh.");
     throw e;
   }
 }
-function note(t){const n=$("note");n.textContent=t;n.style.display=t?"block":"none"}
-const money=n=>n==null?"-":"$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+function money(n){return n==null?"-":"$"+Number(n).toLocaleString(undefined,{maximumFractionDigits:0})}
 function price(n){if(n==null)return"-";n=Number(n);if(n>=1)return"$"+n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
   return"$"+(n>=0.01?n.toFixed(4):n.toPrecision(4))}
-const pct=n=>n==null?"-":`<span class="${n>=0?"up":"dn"}">${n>=0?"▲":"▼"} ${Math.abs(n).toFixed(1)}%</span>`;
-function spark(a){if(!a||a.length<2)return"";const p=a.filter((_,i)=>i%4===0),mn=Math.min(...p),mx=Math.max(...p),h=mx-mn||1;
-  const pts=p.map((v,i)=>(i/(p.length-1)*120).toFixed(1)+","+(30-(v-mn)/h*28-1).toFixed(1)).join(" ");
-  const up=p[p.length-1]>=p[0];return`<svg width="120" height="30" viewBox="0 0 120 30"><polyline fill="none" stroke="${up?"#16a34a":"#dc2626"}" stroke-width="1.6" points="${pts}"/></svg>`}
+function pct(n){return n==null?"-":'<span class="'+(n>=0?"up":"dn")+'">'+(n>=0?"▲":"▼")+" "+Math.abs(n).toFixed(1)+"%</span>"}
+function spark(a){if(!a||a.length<2)return"";var p=a.filter(function(_,i){return i%4===0}),mn=Math.min.apply(null,p),mx=Math.max.apply(null,p),h=mx-mn||1;
+  var pts=p.map(function(v,i){return(i/(p.length-1)*110).toFixed(1)+","+(30-(v-mn)/h*28-1).toFixed(1)}).join(" ");
+  var up=p[p.length-1]>=p[0];return'<svg width="110" height="30" viewBox="0 0 110 30"><polyline fill="none" stroke="'+(up?"#16a34a":"#dc2626")+'" stroke-width="1.8" stroke-linecap="round" points="'+pts+'"/></svg>'}
+var C1="price_change_percentage_1h_in_currency",C24="price_change_percentage_24h_in_currency",C7="price_change_percentage_7d_in_currency";
+function rowHtml(c){
+  var sp=spark(c.sparkline_in_7d&&c.sparkline_in_7d.price);
+  return'<div class="row'+(open[c.id]?" open":"")+'" data-id="'+esc(c.id)+'"><div class="main">'+
+  '<span class="rk">'+(c.market_cap_rank==null?"-":c.market_cap_rank)+'</span>'+
+  '<span class="c"><img src="'+esc(c.image)+'" alt="" loading="lazy"><span class="nm">'+esc(c.name)+'<small>'+esc(c.symbol)+'</small></span></span>'+
+  '<span class="p">'+price(c.current_price)+'</span><span>'+pct(c[C24])+'</span>'+
+  '<span class="dm">'+money(c.total_volume)+'</span><span class="dm">'+money(c.market_cap)+'</span><span class="dm">'+sp+'</span>'+
+  '<button class="ch" aria-label="Show details">▼</button></div>'+
+  '<div class="more"><div><label>1h</label>'+pct(c[C1])+'</div><div><label>7d</label>'+pct(c[C7])+'</div>'+
+  '<div class="mo"><label>24h Volume</label>'+money(c.total_volume)+'</div><div class="mo"><label>Market Cap</label>'+money(c.market_cap)+'</div>'+
+  '<div class="mo"><label>Rank</label>'+(c.market_cap_rank==null?"-":"#"+c.market_cap_rank)+'</div>'+
+  '<div class="mo"><label>Last 7 days</label>'+sp+'</div></div></div>'}
 function draw(){
-  let l=rows.slice();
-  if(sort.k)l.sort((a,b)=>{const x=a[sort.k],y=b[sort.k];if(x==null)return 1;if(y==null)return-1;
+  var l=rows.slice();
+  if(sort.k)l.sort(function(a,b){var x=a[sort.k],y=b[sort.k];if(x==null)return 1;if(y==null)return-1;
     return(typeof x==="string"?x.localeCompare(y):x-y)*sort.d});
-  $("r").innerHTML=l.map(c=>`<tr><td>${c.market_cap_rank??"-"}</td>
-  <td><div class="c"><img src="${esc(c.image)}" alt="" loading="lazy">${esc(c.name)} <small>${esc(c.symbol)}</small></div></td>
-  <td>${price(c.current_price)}</td><td>${pct(c.price_change_percentage_1h_in_currency)}</td><td>${pct(c.price_change_percentage_24h_in_currency)}</td><td>${pct(c.price_change_percentage_7d_in_currency)}</td>
-  <td>${money(c.total_volume)}</td><td>${money(c.market_cap)}</td><td>${spark(c.sparkline_in_7d&&c.sparkline_in_7d.price)}</td></tr>`).join("")
-  ||'<tr><td colspan="9" style="text-align:center;color:var(--m)">No results.</td></tr>';
-  const nopg=search||tab==="trending";
+  $("r").innerHTML=l.map(rowHtml).join("")||'<div class="empty">No results.</div>';
+  var hs=document.querySelectorAll("#head span[data-k]");
+  for(var i=0;i<hs.length;i++){hs[i].className=hs[i].getAttribute("data-k")===sort.k?(sort.d===1?"asc":"desc"):""}
+  var nopg=search||tab==="trending";
   $("pn").textContent=nopg?"":"Page "+page;
   $("prev").style.display=$("next").style.display=nopg?"none":"";
   $("prev").disabled=page<=1;
 }
-const MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
+var MK="&vs_currency=usd&sparkline=true&price_change_percentage=1h,24h,7d";
 async function load(){
-  $("r").innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--m)">Loading...</td></tr>';
+  $("r").innerHTML='<div class="empty">Loading...</div>';
   try{
     if(search){
-      const s=await get("/search?query="+encodeURIComponent(search));
-      const ids=s.coins.slice(0,30).map(c=>c.id).join(",");
+      var s=await get("/search?query="+encodeURIComponent(search));
+      var ids=s.coins.slice(0,30).map(function(c){return c.id}).join(",");
       rows=ids?await get("/coins/markets?ids="+ids+"&order=market_cap_desc"+MK):[];
     }else if(tab==="trending"){
-      const t=await get("/search/trending");
-      const ids=t.coins.map(c=>c.item.id).join(",");
-      rows=ids?await get("/coins/markets?ids="+ids+"&order=market_cap_desc"+MK):[];
+      var t=await get("/search/trending");
+      var ids2=t.coins.map(function(c){return c.item.id}).join(",");
+      rows=ids2?await get("/coins/markets?ids="+ids2+"&order=market_cap_desc"+MK):[];
     }else{
-      const cat=tab==="all"?"":"&category="+tab;
+      var cat=tab==="all"?"":"&category="+tab;
       rows=await get("/coins/markets?order=market_cap_desc&per_page=100&page="+page+cat+MK);
       $("next").disabled=rows.length<100;
     }
   }catch(e){rows=[]}
   draw();
 }
-$("tabs").innerHTML=Object.entries(TABS).map(([k,v])=>`<button data-k="${k}">${v}</button>`).join("");
-function mark(){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.k===tab))}
-$("tabs").onclick=e=>{const k=e.target.dataset.k;if(k){tab=k;page=1;search="";$("q").value="";sort={k:null,d:-1};location.hash=k;mark();load()}};
-document.querySelector("thead").onclick=e=>{const k=e.target.dataset.k;if(!k)return;sort={k,d:sort.k===k?-sort.d:(k==="name"||k==="market_cap_rank"?1:-1)};draw()};
-$("prev").onclick=()=>{page--;load();scrollTo(0,0)};$("next").onclick=()=>{page++;load();scrollTo(0,0)};
-let t;$("q").oninput=e=>{clearTimeout(t);t=setTimeout(()=>{search=e.target.value.trim();page=1;load()},500)};
-async function stats(){try{const g=(await get("/global")).data;
-  $("stats").innerHTML=`<span>Coins: <b>${g.active_cryptocurrencies.toLocaleString()}</b></span><span>Market Cap: <b>${money(g.total_market_cap.usd)}</b></span><span>24h Volume: <b>${money(g.total_volume.usd)}</b></span><span>BTC Dominance: <b>${g.market_cap_percentage.btc.toFixed(1)}%</b></span>`}catch(e){}}
-const t0=Date.now();
-function hideSplash(){const s=$("splash");if(!s)return;
-  setTimeout(()=>{s.classList.add("hide");setTimeout(()=>s.remove(),600)},Math.max(0,1000-(Date.now()-t0)))}
-mark();stats();load().finally(hideSplash);setTimeout(hideSplash,6000);
-setInterval(()=>{if(!document.hidden&&!search)load()},90000);
+function setTab(k){tab=k;page=1;search="";$("q").value="";sort={k:null,d:-1};$("sortsel").value="";location.hash=k;mark();load()}
+$("tabs").innerHTML=Object.keys(TABS).map(function(k){return'<button class="tab" data-k="'+k+'">'+TABS[k]+'</button>'}).join("");
+function mark(){var b=document.querySelectorAll("#tabs .tab");for(var i=0;i<b.length;i++)b[i].className="tab"+(b[i].getAttribute("data-k")===tab?" on":"")}
+$("tabs").onclick=function(e){var k=e.target.getAttribute("data-k");if(k)setTab(k)};
+$("cta").onclick=function(){setTab("brc-20");scrollTo(0,0)};
+$("head").onclick=function(e){var k=e.target.getAttribute("data-k");if(!k)return;
+  sort={k:k,d:sort.k===k?-sort.d:(k==="name"||k==="market_cap_rank"?1:-1)};draw()};
+$("sortsel").onchange=function(e){var v=e.target.value;if(!v){sort={k:null,d:-1}}else{var p=v.split("|");sort={k:p[0],d:+p[1]}}draw()};
+$("r").onclick=function(e){var el=e.target;while(el&&el!==this&&!(el.className&&String(el.className).indexOf("row")===0&&el.getAttribute("data-id")))el=el.parentNode;
+  if(!el||el===this)return;var id=el.getAttribute("data-id");open[id]=!open[id];
+  if(open[id])el.className="row open";else el.className="row"};
+$("prev").onclick=function(){page--;load();scrollTo(0,0)};$("next").onclick=function(){page++;load();scrollTo(0,0)};
+var tm;$("q").oninput=function(e){clearTimeout(tm);var v=e.target.value.trim();tm=setTimeout(function(){search=v;page=1;load()},500)};
+async function stats(){try{var g=(await get("/global")).data;
+  $("stats").innerHTML='<div class="chip"><label>Coins</label><b>'+g.active_cryptocurrencies.toLocaleString()+'</b></div>'+
+  '<div class="chip"><label>Market Cap</label><b>'+money(g.total_market_cap.usd)+'</b></div>'+
+  '<div class="chip"><label>24h Volume</label><b>'+money(g.total_volume.usd)+'</b></div>'+
+  '<div class="chip"><label>BTC Dominance</label><b>'+g.market_cap_percentage.btc.toFixed(1)+'%</b></div>'}catch(e){}}
+var t0=Date.now();
+function hideSplash(){var s=$("splash");if(!s)return;
+  setTimeout(function(){s.className="hide";setTimeout(function(){if(s.parentNode)s.parentNode.removeChild(s)},600)},Math.max(0,1000-(Date.now()-t0)))}
+mark();stats();load().then(hideSplash,hideSplash);setTimeout(hideSplash,6000);
+setInterval(function(){if(!document.hidden&&!search)load()},90000);
 </script></body></html>
